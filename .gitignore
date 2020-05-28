@@ -1,0 +1,63 @@
+# Project exclude paths
+/cmake-build-debug/
+## Ignore CMake
+
+CMakeSettings.json
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+include/*.db
+include/*.html
+out/
+build/
+.SET_LOCAL_PATH.cmake
+
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+/.vs/SoftlyPlay/v16/Browse.VC.opendb
+.vs/
+
+cmake-build-debug
+cmake-build-release
+.idea/
+.SET_LOCAL_PATH.cmake
