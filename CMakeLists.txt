@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-D__STDC_CONSTANT_MACROS")
 
+include(./.SET_LOCAL_PATH.cmake)
+
 #=======================ffmpeg=============================
 
 find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
@@ -38,10 +40,16 @@ find_library(SWSCALE_LIBRARY swscale)
 
 #=======================ffmpeg=============================
 
+find_library(FDK_LIBRARY fdk-aac)
+
+message(STATUS "FDK library status:")
+message(STATUS "    libraries: ${FDK_LIBRARY}")
+message(STATUS "    include path: ${FDK_INCLUDE_DIR}")
+
 add_executable (${PROJECT_NAME}
        "src/main.cpp" 
        "src/FFmpegDecoder.cpp"
-        "src/remuxing.cpp")
+        "src/remuxing.cpp" "src/fdkTry.cpp" "src/test_enc.cpp" "src/wav_reader.cpp")
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
@@ -53,6 +61,7 @@ target_include_directories(${PROJECT_NAME}
         ${AVFILTER_INCLUDE_DIR}
         ${SWRESAMPLE_INCLUDE_DIR}
         ${SWSCALE_INCLUDE_DIR}
+        ${FDK_INCLUDE_DIR}
         )
 
 target_link_libraries(${PROJECT_NAME}
@@ -64,5 +73,6 @@ target_link_libraries(${PROJECT_NAME}
         ${AVFILTER_LIBRARY}
         ${SWRESAMPLE_LIBRARY}
         ${SWSCALE_LIBRARY}
+        ${FDK_LIBRARY}
         )
 

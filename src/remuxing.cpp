@@ -30,7 +30,7 @@ static void log_packet(const AVFormatContext *fmt_ctx, const AVPacket *pkt,
   //    pkt->stream_index);
 }
 
-int main(int argc, char **argv) {
+int main1(int argc, char **argv) {
   AVOutputFormat *ofmt = NULL;
   AVFormatContext *ifmt_ctx = NULL, *ofmt_ctx = NULL;
   AVPacket pkt;
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   int stream_index = 0;
   int *stream_mapping = NULL;
   int stream_mapping_size = 0;
-  if (argc < 3) {
+ /* if (argc < 3) {
     printf(
         "Usage: %s <input> <output>\n"
         "API example program to remux a media file with libavformat and "
@@ -48,10 +48,10 @@ int main(int argc, char **argv) {
         "\n",
         argv[0]);
     return 1;
-  }
+  }*/
 
-  in_filename = argv[1];
-  out_filename = argv[2];
+  in_filename = "1.flac";  // argv[1];
+  out_filename = "2.aac";  // argv[2];
 
   if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
     fprintf(stderr, "Could not open input file '%s'", in_filename);
@@ -167,7 +167,8 @@ end:
   avformat_close_input(&ifmt_ctx);
 
   /* close output */
-  if (ofmt_ctx && !(ofmt->flags & AVFMT_NOFILE)) avio_closep(&ofmt_ctx->pb);
+  //if (ofmt_ctx && !(ofmt->flags & AVFMT_NOFILE)) 
+      avio_closep(&ofmt_ctx->pb);
   avformat_free_context(ofmt_ctx);
   av_freep(&stream_mapping);
 

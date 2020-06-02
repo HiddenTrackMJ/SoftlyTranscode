@@ -7,7 +7,7 @@
 #define First 1
 
 #ifdef First
-int main(int argc, char *argv[]) {
+int main3(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");
@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
 
   ImageMat mImageMat;
   FFmpegDecoder decoder;
+
 
 
 

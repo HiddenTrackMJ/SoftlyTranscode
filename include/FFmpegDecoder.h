@@ -9,6 +9,7 @@ extern "C" {
 #include "libavutil/samplefmt.h"
 #include "libswresample/swresample.h"
 #include "libswscale/swscale.h"
+#include "fdk-aac/aacdecoder_lib.h"
 };
 
 class ImageMat {
