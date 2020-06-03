@@ -1,4 +1,4 @@
-﻿# CMakeList.txt: transcode 的 CMake 项目，在此处包括源代码并定义
+# CMakeList.txt: transcode 的 CMake 项目，在此处包括源代码并定义
 # 项目特定的逻辑。
 #
 cmake_minimum_required (VERSION 3.8)
@@ -55,7 +55,6 @@ add_executable (${PROJECT_NAME}
        "src/FFmpegDecoder.cpp"
         "src/remuxing.cpp" 
         "src/fdk_enc.cpp" 
-          
         "src/fdk_dec.cpp" 
         )
 

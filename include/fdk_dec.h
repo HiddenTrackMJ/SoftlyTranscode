@@ -3,7 +3,7 @@
  * Date: 2020/06/03
  * Time: 11:42
  *
- * ½âÂëÆ÷Í·ÎÄ¼ş
+ * è§£ç å™¨å¤´æ–‡ä»¶
  *
  */
 
@@ -65,8 +65,8 @@ class AacDecoder {
 
 
 /**
-* @see ISO/IEC 13818-7 Information technology ¡ª Generic coding of moving
-pictures and associated audio information ¡ª Part 7:Advanced Audio Coding (AAC)
+* @see ISO/IEC 13818-7 Information technology â€” Generic coding of moving
+pictures and associated audio information â€” Part 7:Advanced Audio Coding (AAC)
 6.2.1
 6.2.2
 */

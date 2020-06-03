@@ -1,4 +1,4 @@
-﻿// transcode.cpp: 定义应用程序的入口点。
+// transcode.cpp: 定义应用程序的入口点。
 //
 
 #include "seeker/logger.h"

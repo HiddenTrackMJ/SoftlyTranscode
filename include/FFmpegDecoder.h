@@ -1,5 +1,5 @@
 #pragma once
-// ´ËÀàÉè¼ÆÊäÈëH264ÂëÁ÷£¬Êä³öBGR buffer Êı¾İ
+// æ­¤ç±»è®¾è®¡è¾“å…¥H264ç æµï¼Œè¾“å‡ºBGR buffer æ•°æ®
 #include <stdio.h>
 
 extern "C" {
@@ -47,12 +47,12 @@ class FFmpegDecoder {
   FFmpegDecoder();
   ~FFmpegDecoder();
 
-  // ImageMat ×îºóÒ»¸ö²ÎÊı×îºÃ´«ÈëÒ»¸övector<ImageMat >
-  // ÒòÎªÓĞÊ±ºò´«ÈëÒ»Ö¡»áÊä³ö¶àÖ¡£¬´Ë´¦Èç¹ûÊä³ö¶àÖ¡£¬Ö»È¡×îºóÒ»Ö¡£¬¿ÉÒÔ×Ô¼º¸ÄÉÆ
+  // ImageMat æœ€åä¸€ä¸ªå‚æ•°æœ€å¥½ä¼ å…¥ä¸€ä¸ªvector<ImageMat >
+  // å› ä¸ºæœ‰æ—¶å€™ä¼ å…¥ä¸€å¸§ä¼šè¾“å‡ºå¤šå¸§ï¼Œæ­¤å¤„å¦‚æœè¾“å‡ºå¤šå¸§ï¼Œåªå–æœ€åä¸€å¸§ï¼Œå¯ä»¥è‡ªå·±æ”¹å–„
   int InputData(
       unsigned char *inputData, int inputLen,
-      ImageMat &mImageMat);  // ·µ»ØÖµ0 ÓĞÊä³ö£¬ ·µ»ØÖµ<0
-                             // Ã»ÓĞÊä³öÊı¾İ£¬Ë¢ĞÂÊı¾İÊ±ºòinputLen = 0;
+      ImageMat &mImageMat);  // è¿”å›å€¼0 æœ‰è¾“å‡ºï¼Œ è¿”å›å€¼<0
+                             // æ²¡æœ‰è¾“å‡ºæ•°æ®ï¼Œåˆ·æ–°æ•°æ®æ—¶å€™inputLen = 0;
 
  private:
   int decode(AVPacket *mpkt, ImageMat &mImageMat);
