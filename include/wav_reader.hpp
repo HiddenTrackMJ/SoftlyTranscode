@@ -1,9 +1,17 @@
+/**
+ * Author: Hidden Track
+ * Date: 2020/06/03
+ * Time: 15:17
+ *
+ * wav ¶Á³ö
+ *
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "wav_reader.h"
 
 #define TAG(a, b, c, d) (((a) << 24) | ((b) << 16) | ((c) << 8) | (d))
 
@@ -21,7 +29,7 @@ struct wav_reader {
   int streamed;
 };
 
-static uint32_t read_tag(struct wav_reader* wr) {
+inline static uint32_t read_tag(struct wav_reader* wr) {
   uint32_t tag = 0;
   tag = (tag << 8) | fgetc(wr->wav);
   tag = (tag << 8) | fgetc(wr->wav);
@@ -30,7 +38,7 @@ static uint32_t read_tag(struct wav_reader* wr) {
   return tag;
 }
 
-static uint32_t read_int32(struct wav_reader* wr) {
+inline static uint32_t read_int32(struct wav_reader* wr) {
   uint32_t value = 0;
   value |= fgetc(wr->wav) << 0;
   value |= fgetc(wr->wav) << 8;
@@ -39,19 +47,19 @@ static uint32_t read_int32(struct wav_reader* wr) {
   return value;
 }
 
-static uint16_t read_int16(struct wav_reader* wr) {
+inline static uint16_t read_int16(struct wav_reader* wr) {
   uint16_t value = 0;
   value |= fgetc(wr->wav) << 0;
   value |= fgetc(wr->wav) << 8;
   return value;
 }
 
-static void skip(FILE* f, int n) {
+inline static void skip(FILE* f, int n) {
   int i;
   for (i = 0; i < n; i++) fgetc(f);
 }
 
-void* wav_read_open(const char* filename) {
+inline void* wav_read_open(const char* filename) {
   struct wav_reader* wr = (struct wav_reader*)malloc(sizeof(*wr));
   long data_pos = 0;
   memset(wr, 0, sizeof(*wr));
@@ -136,13 +144,14 @@ void* wav_read_open(const char* filename) {
   return wr;
 }
 
-void wav_read_close(void* obj) {
+inline void wav_read_close(void* obj) {
   struct wav_reader* wr = (struct wav_reader*)obj;
   if (wr->wav != stdin) fclose(wr->wav);
   free(wr);
 }
 
-int wav_get_header(void* obj, int* format, int* channels, int* sample_rate,
+inline int wav_get_header(void* obj, int* format, int* channels,
+                          int* sample_rate,
                    int* bits_per_sample, unsigned int* data_length) {
   struct wav_reader* wr = (struct wav_reader*)obj;
   if (format) *format = wr->format;
@@ -153,7 +162,7 @@ int wav_get_header(void* obj, int* format, int* channels, int* sample_rate,
   return wr->format && wr->sample_rate;
 }
 
-int wav_read_data(void* obj, unsigned char* data, unsigned int length) {
+inline int wav_read_data(void* obj, unsigned char* data, unsigned int length) {
   struct wav_reader* wr = (struct wav_reader*)obj;
   int n;
   if (wr->wav == NULL) return -1;

@@ -1,8 +1,14 @@
-
-#ifndef FDKAAC_DEC_H
-#define FDKAAC_DEC_H
-
+/**
+ * Author: Hidden Track
+ * Date: 2020/06/02
+ * Time: 20:23
+ *
+ * ±àÂëÆ÷Í·ÎÄ¼þ
+ *
+ */
 #pragma once
+
+#include <string>
 
 extern "C" {
 #include "libavcodec/avcodec.h"
@@ -47,4 +53,4 @@ class AacEncoder {
   aacenc_t _h;
 };
 
-#endif
+//inline int encode_test(std::string input, std::string output);

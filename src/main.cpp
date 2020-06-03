@@ -3,22 +3,30 @@
 
 #include "seeker/logger.h"
 #include "FFmpegDecoder.h"
+#include "fdk_demo.hpp"
 
 #define First 1
 
+//extern int decode_test(std::string input, std::string output);
+//extern int encode_test(std::string input, std::string output);
+
 #ifdef First
-int main3(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");
 
+  int select;
 
-  ImageMat mImageMat;
-  FFmpegDecoder decoder;
+  std::cout << "Please select mode, 1 for decoding else for encoding: "
+            << std::endl;
+  std::cin >> select;
 
-
-
-
+  if (select == 1) {
+    decode_test("hello.aac", "world.aac");
+  } else {
+    encode_test("1.wav", "time.aac");
+  }
 
   return 0;
 }

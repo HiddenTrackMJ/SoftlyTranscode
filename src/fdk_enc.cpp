@@ -1,6 +1,18 @@
-#include <iostream>
+/**
+ * Author: Hidden Track
+ * Date: 2020/06/02
+ * Time: 20:53
+ *
+ * ±àÂëÆ÷
+ *
+ */
 
-#include "fdkTry.h"
+#include "fdk_enc.h"
+
+extern "C" {
+#include "wav_reader.hpp"
+}
+
 
 AacEncoder::AacEncoder() {}
 
@@ -197,3 +209,4 @@ int AacEncoder::aacenc_max_output_buffer_size() {
 
   return out_buffer_size;
 }
+

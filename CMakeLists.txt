@@ -40,16 +40,24 @@ find_library(SWSCALE_LIBRARY swscale)
 
 #=======================ffmpeg=============================
 
+
+#=======================libfdk-aac=========================
 find_library(FDK_LIBRARY fdk-aac)
 
 message(STATUS "FDK library status:")
 message(STATUS "    libraries: ${FDK_LIBRARY}")
 message(STATUS "    include path: ${FDK_INCLUDE_DIR}")
 
+#=======================libfdk-aac=========================
+
 add_executable (${PROJECT_NAME}
        "src/main.cpp" 
        "src/FFmpegDecoder.cpp"
-        "src/remuxing.cpp" "src/fdkTry.cpp" "src/test_enc.cpp" "src/wav_reader.cpp")
+        "src/remuxing.cpp" 
+        "src/fdk_enc.cpp" 
+          
+        "src/fdk_dec.cpp" 
+        )
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
