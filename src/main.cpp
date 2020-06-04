@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");
-
+  //decode_test("encode.aac", "zzz.wav");
   int select;
 
   std::cout << "Please select mode, 1 for decoding else for encoding: "
@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   std::cin >> select;
 
   if (select == 1) {
-    decode_test("hello.aac", "world.aac");
+    decode_test("encode.aac", "zzz.wav");
   } else {
     encode_test("1.wav", "time.aac");
   }

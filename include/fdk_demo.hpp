@@ -15,7 +15,7 @@ inline int encode_test(std::string input, std::string output) {
   AacEncoder fdkaac_enc;
 
   std::ofstream out_aac(output.c_str(), std::ios::binary);
-  int format, sample_rate = 44100, channels = 2, bits_per_sample = 14400;
+  int format, sample_rate = 32000, channels = 1, bits_per_sample = 14400;
 
   void *wav = wav_read_open(input.c_str());
   if (!wav) {
@@ -37,7 +37,10 @@ inline int encode_test(std::string input, std::string output) {
     return 1;
   }
 
-  if (fdkaac_enc.aacenc_init(2, channels, sample_rate, bitrate) != AACENC_OK) {
+  I_LOG("s_r: {}, channel: {}, b/s: {}", sample_rate, channels,
+        bits_per_sample);
+
+  if (fdkaac_enc.aacenc_init(23, channels, sample_rate, bitrate) != AACENC_OK) {
     D_LOG("init failed here5...");
     return -1;
   }
@@ -59,7 +62,9 @@ inline int encode_test(std::string input, std::string output) {
     int aacSize = aac_buf.size();
     int read = wav_read_data(wav, (unsigned char *)&pcm_buf[0], pcm_buf.size());
 
-    if (read <= 0) break;
+    if (read <= 0) {
+      break;
+    }
 
     if ((err = fdkaac_enc.aacenc_encode(&pcm_buf[0], read, nbSamples,
                                         &aac_buf[0], aacSize)) != AACENC_OK) {
@@ -79,13 +84,20 @@ inline int encode_test(std::string input, std::string output) {
 }
 
 inline int decode_test(std::string input, std::string output) {
-  I_LOG("Start decoding...");
-  std::ifstream in_aac(input.c_str(), std::ios::binary);
-  void *wav = NULL;
-  AacDecoder fdkaac_dec;
-  fdkaac_dec.aacdec_init_adts();
 
+  I_LOG("Start decoding...");
+
+  std::ifstream in_aac(input.c_str(), std::ios::binary);
+
+  void *wav = NULL;
+
+  AacDecoder fdkaac_dec;
+
+  int ret = fdkaac_dec.aacdec_init_adts();
+
+  
   int nbPcm = fdkaac_dec.aacdec_pcm_size();
+
   if (nbPcm == 0) {
     nbPcm = 50 * 1024;
   }
@@ -97,17 +109,22 @@ inline int decode_test(std::string input, std::string output) {
   in_aac.seekg(0, std::ios::beg);
 
   std::vector<char> aac_buf(nbAacSize, 0);
+
   in_aac.read(&aac_buf[0], nbAacSize);
+
   int pos = 0;
 
   while (1) {
+
     if (nbAacSize - pos < 7) {
+      I_LOG("222...");
       break;
     }
 
     adts_header_t *adts = (adts_header_t *)(&aac_buf[0] + pos);
 
     if (adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf) {
+      I_LOG("333...");
       break;
     }
 
@@ -116,6 +133,7 @@ inline int decode_test(std::string input, std::string output) {
                          adts->frame_length_10_to_12;
 
     if (pos + aac_frame_size > nbAacSize) {
+      I_LOG("444...");
       break;
     }
 
@@ -125,10 +143,12 @@ inline int decode_test(std::string input, std::string output) {
     pos += aac_frame_size;
 
     if (ret != 0) {
+      D_LOG("here1...");
       continue;
     }
 
     if (leftSize > 0) {
+      D_LOG("here2...");
       continue;
     }
 
@@ -137,25 +157,29 @@ inline int decode_test(std::string input, std::string output) {
         fdkaac_dec.aacdec_decode_frame(&pcm_buf[0], pcm_buf.size(), &validSize);
 
     if (ret == AAC_DEC_NOT_ENOUGH_BITS) {
+      D_LOG("here3...");
       continue;
     }
 
     if (ret != 0) {
+      D_LOG("here4...");
       continue;
     }
 
     if (!wav) {
       if (fdkaac_dec.aacdec_sample_rate() <= 0) {
+        D_LOG("here5...");
         break;
       }
 
       wav = wav_write_open(output.c_str(), fdkaac_dec.aacdec_sample_rate(), 16,
                            fdkaac_dec.aacdec_num_channels());
       if (!wav) {
+        D_LOG("here6...");
         break;
       }
     }
-
+    D_LOG("here7...");
     wav_write_data(wav, (unsigned char *)&pcm_buf[0], validSize);
   }
 

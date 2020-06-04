@@ -8,6 +8,7 @@
  */
 
 #include "fdk_enc.h"
+#include "seeker/loggerApi.h"
 
 extern "C" {
 #include "wav_reader.hpp"
@@ -37,7 +38,7 @@ int AacEncoder::aacenc_init(int aot, int channels, int sample_rate,
   //         - 7: Audio Mux Elements (LATM) with muxConfigPresent = 0, out of
   //         band StreamMuxConfig
   //         - 10: Audio Sync Stream (LOAS)
-  int trans_mux = 2;  // adts
+  int trans_mux = TT_MP4_LATM_MCP0; 
   int signaling =
       0;  // Implicit backward compatible signaling (default for ADIF and ADTS)
   int afterburner = 1;  // 1 or 0(default)
@@ -83,6 +84,11 @@ int AacEncoder::aacenc_init(int aot, int channels, int sample_rate,
       return 1;
   }
 
+
+  aot = 23;
+
+  I_LOG("aot: {}, transport type: {}, mode: {}", aot, trans_mux, mode);
+
   if ((err = aacEncOpen(&_h.enc, 0, channels)) != AACENC_OK) {
     return err;
   }
@@ -97,6 +103,11 @@ int AacEncoder::aacenc_init(int aot, int channels, int sample_rate,
   }
 
   if ((err = aacEncoder_SetParam(_h.enc, AACENC_CHANNELMODE, mode)) !=
+      AACENC_OK) {
+    return err;
+  }
+
+  if ((err = aacEncoder_SetParam(_h.enc, AACENC_GRANULE_LENGTH, 480)) !=
       AACENC_OK) {
     return err;
   }
@@ -139,6 +150,7 @@ int AacEncoder::aacenc_init(int aot, int channels, int sample_rate,
   if ((err = aacEncInfo(_h.enc, &info)) != AACENC_OK) {
     return err;
   }
+
 
   _h.frame_size = info.frameLength;
 

@@ -56,7 +56,7 @@ add_executable (${PROJECT_NAME}
         "src/remuxing.cpp" 
         "src/fdk_enc.cpp" 
         "src/fdk_dec.cpp" 
-        )
+         "src/test_enc.cpp" "src/test_dec.cpp")
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
