@@ -50,17 +50,53 @@ message(STATUS "    include path: ${FDK_INCLUDE_DIR}")
 
 #=======================libfdk-aac=========================
 
+
+#=======================jrtplib============================
+
+if (WIN32) # Windows
+
+  find_library(JRTP_LIBRARY jrtplib)
+  find_library(JTHREAD_LIBRARY jthread)
+  #include_directories(${JTHREAD_INCLUDE_PATH})
+  #link_libraries( ${JTHREAD_LIBRARY})
+
+  set(CMAKE_CURRENT_BINARY_DIR "D:/Study/Scala/VSWS/transcode/out/build/x64-Release1")
+
+  message(STATUS "JRTP library status:")
+  message(STATUS "jrtplib libraries: ${JRTP_LIBRARY}")
+  message(STATUS "jrtplib include path: ${JRTPLIB_INCLUDE_PATH}")
+  message(STATUS "jthread libraries: ${JTHREAD_LIBRARY}")
+  message(STATUS "jthread include path: ${JTHREAD_INCLUDE_PATH}")
+  message(CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
+ELSE() # MAC or linux
+
+  find_library(JRTP_LIBRARY jrtp)
+  #find_library(JTHREAD_LIBRARY jthread)
+
+endif()
+
+
+
+#=======================jrtplib============================
+
 add_executable (${PROJECT_NAME}
        "src/main.cpp" 
        "src/FFmpegDecoder.cpp"
         "src/remuxing.cpp" 
         "src/fdk_enc.cpp" 
         "src/fdk_dec.cpp" 
-         "src/test_enc.cpp" "src/test_dec.cpp")
+         "src/test_enc.cpp" 
+         "src/test_dec.cpp" 
+         "src/rtpRecv.cpp"
+         "include/fdk_demo.hpp"
+         "src/rtpSender.cpp" "src/RtpSess.cpp" "src/encoder.cpp")
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
         ${PROJECT_SOURCE_DIR}/include
+        ${JTHREAD_INCLUDE_PATH}
+        ${JRTPLIB_INCLUDE_PATH}
         ${AVCODEC_INCLUDE_DIR}
         ${AVFORMAT_INCLUDE_DIR}
         ${AVUTIL_INCLUDE_DIR}
@@ -73,6 +109,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        ${JRTP_LIBRARY}
+        ${JTHREAD_LIBRARY}
         ${AVCODEC_LIBRARY}
         ${AVFORMAT_LIBRARY}
         ${AVUTIL_LIBRARY}

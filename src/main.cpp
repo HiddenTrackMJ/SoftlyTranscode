@@ -1,21 +1,24 @@
 // transcode.cpp: 定义应用程序的入口点。
 //
 
+
+#include "rtpSender.h"
+#include "rtpRecv.h"
 #include "seeker/logger.h"
 #include "FFmpegDecoder.h"
 #include "fdk_demo.hpp"
 
 #define First 1
 
-//extern int decode_test(std::string input, std::string output);
-//extern int encode_test(std::string input, std::string output);
+extern int decode_test(std::string input, std::string output);
+extern int encode_test(std::string input, std::string output);
 
 #ifdef First
 int main(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");
-  //decode_test("encode.aac", "zzz.wav");
+
   int select;
 
   std::cout << "Please select mode, 1 for decoding else for encoding: "
@@ -23,9 +26,16 @@ int main(int argc, char *argv[]) {
   std::cin >> select;
 
   if (select == 1) {
-    decode_test("encode.aac", "zzz.wav");
+    RtpSender sender;
+    //sender.send_aac();
+    sender.send_aac("127.0.0.1", 8080, "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/zzz.wav");
+    //decode_test("encode.aac", "zzz.wav");
   } else {
-    encode_test("1.wav", "time.aac");
+
+    RtpReceiver recvr;
+    //recvr.recv_aac();
+    recvr.recv_aac(8080);
+    //encode_test("1.wav", "time.aac");
   }
 
   return 0;

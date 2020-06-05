@@ -106,6 +106,7 @@ inline int decode_test(std::string input, std::string output) {
 
   in_aac.seekg(0, std::ios::end);
   int nbAacSize = in_aac.tellg();
+  I_LOG("aac_size: {}", nbAacSize);
   in_aac.seekg(0, std::ios::beg);
 
   std::vector<char> aac_buf(nbAacSize, 0);

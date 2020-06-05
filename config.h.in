@@ -1,0 +1,3 @@
+#cmakedefine SAVE_PATH "@SAVE_PATH@"
+#cmakedefine SPDLOG_ACTIVE_LEVEL @SPDLOG_ACTIVE_LEVEL@
+#cmakedefine LOG_FILE_NAME "@LOG_FILE_NAME@"

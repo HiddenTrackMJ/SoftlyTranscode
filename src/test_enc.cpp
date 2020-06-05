@@ -222,7 +222,7 @@ int main2(int argc, char *argv[]) {
 }
 
 
-int maina(int argc, char *argv[]) {
+int mains(int argc, char *argv[]) {
   int bitrate = 64000;
   int ch;
   const char *infile, *outfile;
@@ -358,10 +358,10 @@ int maina(int argc, char *argv[]) {
     return 1;
   }
 
-  input_size = channels * 2 * info.frameLength;
+  input_size = 4096;  // channels * 2 * info.frameLength;
   input_buf = (uint8_t *)malloc(input_size);
   convert_buf = (int16_t *)malloc(input_size);
-
+  int j = 0;
   while (1) {
     AACENC_BufDesc in_buf = {0}, out_buf = {0};
     AACENC_InArgs in_args = {0};
@@ -376,6 +376,7 @@ int maina(int argc, char *argv[]) {
     AACENC_ERROR err;
 
     read = wav_read_data(wav, input_buf, input_size);
+    I_LOG("{} th read, size: {}", ++j, input_size);
     for (i = 0; i < read / 2; i++) {
       const uint8_t *in = &input_buf[2 * i];
       convert_buf[i] = in[0] | (in[1] << 8);
@@ -407,6 +408,10 @@ int maina(int argc, char *argv[]) {
       return 1;
     }
     if (out_args.numOutBytes == 0) continue;
+    uint8_t *output = outbuf;
+    int output_size = out_args.numOutBytes;
+    std::cout << j << " th  " << "111 out_put: " << *output << ", out_size: " << output_size
+              << std::endl;
     fwrite(outbuf, 1, out_args.numOutBytes, out);
   }
   free(input_buf);

@@ -7,8 +7,8 @@
  *
  */
 #include "fdk_dec.h"
-#include "seeker/loggerApi.h"
 
+#include "seeker/loggerApi.h"
 
 AacDecoder::AacDecoder() { _h.dec = NULL; }
 
@@ -16,16 +16,14 @@ AacDecoder::~AacDecoder() { aacdec_close(); }
 
 int AacDecoder::aacdec_init_adts() {
   _h.sample_bits = 16;
-  _h.is_adts = 0;
+  _h.is_adts = 1;
   _h.filled_bytes = 0;
 
-  //TT_MP4_LATM_MCP0
   _h.dec = aacDecoder_Open(TT_MP4_ADTS, 1);
   if (!_h.dec) {
     return -1;
   }
 
-   I_LOG("init successfully");
   _h.info = NULL;
 
   return 0;
@@ -214,4 +212,3 @@ int AacDecoder::aacdec_num_bad_access_units() {
   }
   return _h.info->numBadAccessUnits;
 }
-

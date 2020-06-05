@@ -38,15 +38,15 @@ int main3() {
   UCHAR* conf[] = {ld_conf};
   static UINT conf_len = sizeof(ld_conf);
   AAC_DECODER_ERROR err;
-  AAC_DECODER_ERROR err = aacDecoder_ConfigRaw(handle, conf, &conf_len);
-  if (err > 0) cout << "conf err:" << err << endl;
+  //err = aacDecoder_ConfigRaw(handle, conf, &conf_len);
+  //if (err > 0) cout << "conf err:" << err << endl;
   aacDecoder_SetParam(handle, AAC_CONCEAL_METHOD, conceal_method);
   aacDecoder_SetParam(handle, AAC_PCM_MAX_OUTPUT_CHANNELS, 1);  // MONO:1
   aacDecoder_SetParam(handle, AAC_PCM_MIN_OUTPUT_CHANNELS, 1);  // MONO:1
 
   const char *lengthfile, *aacfile, *pcmfile;
   lengthfile = "length.txt";
-  aacfile = "encode1.aac";
+  aacfile = "encode.aac";
   pcmfile = "decoder.pcm";
   unsigned int size = 1024;
   unsigned int valid;
