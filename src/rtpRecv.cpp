@@ -69,7 +69,7 @@ int parseAdtsHeader(uint8_t *in, struct AdtsHeader *res) {
     res->aacFrameLength = (((((unsigned int)in[3]) & 0x03) << 11) |
                            (((unsigned int)in[4] & 0xFF) << 3) |
                            ((unsigned int)in[5] & 0xE0) >> 5);
-    // printf("adts:aac_frame_length  %d\n", res->aacFrameLength);
+     printf("adts:aac_frame_length  %d\n", res->aacFrameLength);
     res->adtsBufferFullness =
         (((unsigned int)in[5] & 0x1f) << 6 | ((unsigned int)in[6] & 0xfc) >> 2);
     // printf("adts:adts_buffer_fullness  %d\n", res->adtsBufferFullness);
@@ -382,7 +382,7 @@ void RtpReceiver::recv_aac(){
 void RtpReceiver::recv_aac(int port) {
   seeker::SocketUtil::startupWSA();
   std::string filename = SAVE_PATH;
-  filename = filename + to_string(seeker::Time::currentTime()) + ".aac";
+  filename = filename + to_string(seeker::Time::currentTime()) + "recv.aac";
   size_t payloadlen = 0;
   uint8_t *payloaddata;
   uint8_t pos = 0;
@@ -434,20 +434,36 @@ void RtpReceiver::recv_aac(int port) {
           payloaddata = pack->GetPayloadData();
           payloadlen = pack->GetPayloadLength();
 
+          adts_header_t *adts = (adts_header_t *)(&payloaddata[0] + pos);
 
-           memcpy(frame, payloaddata, ADTS_HRADER_LENGTH);
-          // output = output + ADTS_HRADER_LENGTH;
-
-          if (parseAdtsHeader(frame, &adtsHeader) < 0) {
-            E_LOG("parse err");
+          if (adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf) {
+            I_LOG("333...");
             break;
           }
 
-          int leftSize = adtsHeader.aacFrameLength;
-          int ret = fdkaac_dec.aacdec_fill(
-              (char *)payloaddata, adtsHeader.aacFrameLength,
+          int aac_frame_size = adts->frame_length_0_to_1 << 11 |
+                               adts->frame_length_2_to_9 << 3 |
+                               adts->frame_length_10_to_12;
+
+          int leftSize = aac_frame_size;
+          int ret = fdkaac_dec.aacdec_fill((char *)&payloaddata[0],
+                                           aac_frame_size,
                                            &leftSize);
-          //pos += payloadlen;
+          // pos += payloadlen;
+
+          // memcpy(frame, payloaddata, ADTS_HRADER_LENGTH);
+          //// output = output + ADTS_HRADER_LENGTH;
+
+          //if (parseAdtsHeader(frame, &adtsHeader) < 0) {
+          //  E_LOG("parse err");
+          //  break;
+          //}
+
+          //int leftSize = adtsHeader.aacFrameLength;
+          //int ret = fdkaac_dec.aacdec_fill(
+          //    (char *)payloaddata, adtsHeader.aacFrameLength,
+          //                                 &leftSize);
+          ////pos += payloadlen;
 
           if (ret != 0) {
             D_LOG("here1...");
@@ -480,7 +496,7 @@ void RtpReceiver::recv_aac(int port) {
           D_LOG("here7...");
           wav_write_data(wav, (unsigned char *)&pcm_buf[0], validSize);
 
-          //fwrite(&payloaddata[pos], payloadlen, 1, fd);
+          fwrite(&payloaddata[pos], payloadlen, 1, fd);
 
           rtpSession.DeletePacket(pack);
         }
@@ -492,7 +508,7 @@ void RtpReceiver::recv_aac(int port) {
     int status = rtpSession.Poll();
     checkerror(status);
 
-    RTPTime::Wait(RTPTime(0, 100));
+    RTPTime::Wait(RTPTime(0, 10));
   }
 
   rtpSession.Destroy();

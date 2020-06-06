@@ -259,7 +259,7 @@ void RtpSender::send_aac(const string &destipstr, int destport,
       checkerror(status);
       I_LOG("send packet size is {}", adtsHeader.aacFrameLength);
       memset(output, 0, 4096);
-      RTPTime::Wait(RTPTime(0, 23000));
+      //RTPTime::Wait(RTPTime(0, 23000));
     }
 
   } while (true);
