@@ -382,7 +382,7 @@ void RtpReceiver::recv_aac(){
 void RtpReceiver::recv_aac(int port) {
   seeker::SocketUtil::startupWSA();
   std::string filename = SAVE_PATH;
-  filename = filename + to_string(seeker::Time::currentTime()) + "recv.aac";
+  filename = "recv.aac" ;//filename + to_string(seeker::Time::currentTime()) + "recv.aac";
   size_t payloadlen = 0;
   uint8_t *payloaddata;
   uint8_t pos = 0;
@@ -428,11 +428,16 @@ void RtpReceiver::recv_aac(int port) {
     if (rtpSession.GotoFirstSourceWithData()) {
       do {
         while ((pack = rtpSession.GetNextPacket()) != NULL) {
-          I_LOG("payload type is {}, marker is {}, payloadlen is {}",
-                pack->GetPayloadType(), pack->HasMarker(),
-                pack->GetPayloadLength());
+          //I_LOG("payload type is {}, marker is {}, payloadlen is {}",
+          //      pack->GetPayloadType(), pack->HasMarker(),
+          //      pack->GetPayloadLength());
           payloaddata = pack->GetPayloadData();
           payloadlen = pack->GetPayloadLength();
+
+          if (payloadlen < 100) {
+            std::cout << "Bye: " << (uint16_t *)payloaddata << std::endl;
+            goto Exit;
+          }
 
           adts_header_t *adts = (adts_header_t *)(&payloaddata[0] + pos);
 
@@ -444,6 +449,10 @@ void RtpReceiver::recv_aac(int port) {
           int aac_frame_size = adts->frame_length_0_to_1 << 11 |
                                adts->frame_length_2_to_9 << 3 |
                                adts->frame_length_10_to_12;
+
+          //std::cout << "data:" << (uint16_t *)payloaddata << std::endl;
+          //I_LOG("data: {}", (uint16_t *)payloaddata);
+          I_LOG("size: {}, len, {}", aac_frame_size, payloadlen);
 
           int leftSize = aac_frame_size;
           int ret = fdkaac_dec.aacdec_fill((char *)&payloaddata[0],
@@ -478,6 +487,16 @@ void RtpReceiver::recv_aac(int port) {
           int validSize = 0;
           ret = fdkaac_dec.aacdec_decode_frame(&pcm_buf[0], pcm_buf.size(),
                                                &validSize);
+
+          if (ret == AAC_DEC_NOT_ENOUGH_BITS) {
+            D_LOG("here3...");
+            continue;
+          }
+
+          if (ret != 0) {
+            D_LOG("here4...");
+            continue;
+          }
    
            if (!wav) {
             if (fdkaac_dec.aacdec_sample_rate() <= 0) {
@@ -493,7 +512,7 @@ void RtpReceiver::recv_aac(int port) {
               break;
             }
           }
-          D_LOG("here7...");
+          //std::cout << "data:" << (uint32_t *)&pcm_buf[0] << std::endl;
           wav_write_data(wav, (unsigned char *)&pcm_buf[0], validSize);
 
           fwrite(&payloaddata[pos], payloadlen, 1, fd);
@@ -510,8 +529,13 @@ void RtpReceiver::recv_aac(int port) {
 
     RTPTime::Wait(RTPTime(0, 10));
   }
+Exit:
+  if (wav) {
+    wav_write_close(wav);
+  }
 
   rtpSession.Destroy();
   fclose(fd);
+  I_LOG("Closed sess");
 }
 

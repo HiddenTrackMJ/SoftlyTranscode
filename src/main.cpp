@@ -28,8 +28,8 @@ int main(int argc, char *argv[]) {
   if (select == 1) {
     RtpSender sender;
     //sender.send_aac();
-    sender.send_aac("127.0.0.1", 8080, "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/zzz.wav");
-    //decode_test("encode.aac", "zzz.wav");
+    sender.send_aac("127.0.0.1", 8080, "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/1.wav");
+    //decode_test("short.aac", "short.wav");
   } else {
 
     RtpReceiver recvr;

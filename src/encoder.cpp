@@ -8,7 +8,7 @@ int aac_encoder::init(int in_aot, int in_trans) {
   bitrate = 64000;  // target bitrate.
   aot = in_aot;          // type eld 39 ld 23
 
-  infile = "zzz.wav";        // original file
+  infile = "short.wav";        // original file
   outfile = "xxx.aac";  // encode aac
   // lengthfile = "length.txt";
 
@@ -211,7 +211,8 @@ int aac_encoder::init(int in_aot, int in_trans) {
     AACENC_ERROR err;
 
     read = wav_read_data(wav, input_buf, input_size);
-    I_LOG("{} th read, size: {}", ++j, input_size);
+    //std::cout << "data: " << (uint16_t *)input_buf << std::endl;
+    //I_LOG("{} th read, size: {}", ++j, input_size);
     for (i = 0; i < read / 2; i++) {
       const uint8_t *in = &input_buf[2 * i];
       convert_buf[i] = in[0] | (in[1] << 8);

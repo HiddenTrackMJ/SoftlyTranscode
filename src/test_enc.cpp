@@ -222,7 +222,7 @@ int main2(int argc, char *argv[]) {
 }
 
 
-int mains(int argc, char *argv[]) {
+int main3(int argc, char *argv[]) {
   int bitrate = 64000;
   int ch;
   const char *infile, *outfile;
@@ -410,8 +410,8 @@ int mains(int argc, char *argv[]) {
     if (out_args.numOutBytes == 0) continue;
     uint8_t *output = outbuf;
     int output_size = out_args.numOutBytes;
-    std::cout << j << " th  " << "111 out_put: " << *output << ", out_size: " << output_size
-              << std::endl;
+   /* std::cout << j << " th  " << "111 out_put: " << *output << ", out_size: " << output_size
+              << std::endl;*/
     fwrite(outbuf, 1, out_args.numOutBytes, out);
   }
   free(input_buf);

@@ -257,13 +257,16 @@ void RtpSender::send_aac(const string &destipstr, int destport,
       output_size -= adtsHeader.aacFrameLength;
       status = sess.SendPacket(output, adtsHeader.aacFrameLength);
       checkerror(status);
-      I_LOG("send packet size is {}", adtsHeader.aacFrameLength);
+
+      
+      I_LOG("send packet size is {} ", adtsHeader.aacFrameLength);
       memset(output, 0, 4096);
-      //RTPTime::Wait(RTPTime(0, 23000));
+      //RTPTime::Wait(RTPTime(0, 2300));
     }
 
   } while (true);
-
+  I_LOG("closing sess");
   fclose(aac);
-  sess.Destroy();
+  status = sess.SendPacket(output, 3);
+  sess.BYEDestroy(RTPTime(0, 100), "Bye", 3);
 }

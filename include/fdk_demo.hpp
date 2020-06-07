@@ -133,6 +133,8 @@ inline int decode_test(std::string input, std::string output) {
                          adts->frame_length_2_to_9 << 3 |
                          adts->frame_length_10_to_12;
 
+    I_LOG("size: {}", aac_frame_size);
+
     if (pos + aac_frame_size > nbAacSize) {
       I_LOG("444...");
       break;
