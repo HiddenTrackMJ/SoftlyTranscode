@@ -7,6 +7,10 @@
  - [ ] dash转码
 
 
- adts -> LATM  参考;https://www.cnblogs.com/ranson7zop/p/7199628.html 
+ adts -> LATM  
+ 参考;
+ https://www.cnblogs.com/ranson7zop/p/7199628.html 
+ https://github.com/FFmpeg/FFmpeg/search?q=LATM&unscoped_q=LATM
+ https://github.com/FFmpeg/FFmpeg/search?q=adts&unscoped_q=adts
 
 #### 注：编码demo的输入文件必须是严格的.wav文件，不能是其他格式修改后缀得到的，我测试是将.flac用ffmpeg转码成.wav的。
