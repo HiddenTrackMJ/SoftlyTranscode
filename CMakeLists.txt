@@ -60,7 +60,7 @@ if (WIN32) # Windows
   #include_directories(${JTHREAD_INCLUDE_PATH})
   #link_libraries( ${JTHREAD_LIBRARY})
 
-  set(CMAKE_CURRENT_BINARY_DIR "D:/Study/Scala/VSWS/transcode/out/build/x64-Release1")
+  #set(CMAKE_CURRENT_BINARY_DIR "D:/Study/Scala/VSWS/transcode/out/build/x64-Release1")
 
   message(STATUS "JRTP library status:")
   message(STATUS "jrtplib libraries: ${JRTP_LIBRARY}")
@@ -90,7 +90,12 @@ add_executable (${PROJECT_NAME}
          "src/test_dec.cpp" 
          "src/rtpRecv.cpp"
          "include/fdk_demo.hpp"
-         "src/rtpSender.cpp" "src/RtpSess.cpp" "src/encoder.cpp")
+         "src/rtpSender.cpp" 
+         "src/RtpSess.cpp" 
+         "src/encoder.cpp" 
+         "src/hls_encoder.cpp" 
+         "src/muxing.cpp" 
+         "src/dash_encoder.cpp")
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE

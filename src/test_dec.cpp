@@ -38,7 +38,7 @@ int main3() {
   UCHAR* conf[] = {ld_conf};
   static UINT conf_len = sizeof(ld_conf);
   AAC_DECODER_ERROR err;
-  //err = aacDecoder_ConfigRaw(handle, conf, &conf_len);
+  err = aacDecoder_ConfigRaw(handle, conf, &conf_len);
   //if (err > 0) cout << "conf err:" << err << endl;
   aacDecoder_SetParam(handle, AAC_CONCEAL_METHOD, conceal_method);
   aacDecoder_SetParam(handle, AAC_PCM_MAX_OUTPUT_CHANNELS, 1);  // MONO:1

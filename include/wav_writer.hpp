@@ -6,7 +6,7 @@
  * wav 写入
  *
  */
-
+#pragma once
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

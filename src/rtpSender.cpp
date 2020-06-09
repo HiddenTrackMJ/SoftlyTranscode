@@ -41,49 +41,7 @@ using jrtplib::RTPIPv4Address;
 using std::string;
 
 
-int RtpSender::parseAdtsHeader(uint8_t *in, struct AdtsHeader *res) {
-    static int frame_number = 0;
-    memset(res, 0, sizeof(*res));
 
-    if ((in[0] == 0xFF) && ((in[1] & 0xF0) == 0xF0)) {
-        res->id = ((unsigned int) in[1] & 0x08) >> 3;
-        //printf("adts:id  %d\n", res->id);
-        res->layer = ((unsigned int) in[1] & 0x06) >> 1;
-        //printf("adts:layer  %d\n", res->layer);
-        res->protectionAbsent = (unsigned int) in[1] & 0x01;
-        //printf("adts:protection_absent  %d\n", res->protectionAbsent);
-        res->profile = ((unsigned int) in[2] & 0xc0) >> 6;
-        //printf("adts:profile  %d\n", res->profile);
-        res->samplingFreqIndex = ((unsigned int) in[2] & 0x3c) >> 2;
-        //printf("adts:sf_index  %d\n", res->samplingFreqIndex);
-        res->privateBit = ((unsigned int) in[2] & 0x02) >> 1;
-        //printf("adts:pritvate_bit  %d\n", res->privateBit);
-        res->channelCfg = ((((unsigned int) in[2] & 0x01) << 2) | (((unsigned int) in[3] & 0xc0) >> 6));
-        //printf("adts:channel_configuration  %d\n", res->channelCfg);
-        res->originalCopy = ((unsigned int) in[3] & 0x20) >> 5;
-        //printf("adts:original  %d\n", res->originalCopy);
-        res->home = ((unsigned int) in[3] & 0x10) >> 4;
-        //printf("adts:home  %d\n", res->home);
-        res->copyrightIdentificationBit = ((unsigned int) in[3] & 0x08) >> 3;
-        //printf("adts:copyright_identification_bit  %d\n", res->copyrightIdentificationBit);
-        res->copyrightIdentificationStart = (unsigned int) in[3] & 0x04 >> 2;
-        //printf("adts:copyright_identification_start  %d\n", res->copyrightIdentificationStart);
-        res->aacFrameLength = (((((unsigned int) in[3]) & 0x03) << 11) |
-                               (((unsigned int) in[4] & 0xFF) << 3) |
-                               ((unsigned int) in[5] & 0xE0) >> 5);
-        //printf("adts:aac_frame_length  %d\n", res->aacFrameLength);
-        res->adtsBufferFullness = (((unsigned int) in[5] & 0x1f) << 6 |
-                                   ((unsigned int) in[6] & 0xfc) >> 2);
-        //printf("adts:adts_buffer_fullness  %d\n", res->adtsBufferFullness);
-        res->numberOfRawDataBlockInFrame = ((unsigned int) in[6] & 0x03);
-        //printf("adts:no_raw_data_blocks_in_frame  %d\n", res->numberOfRawDataBlockInFrame);
-
-        return 0;
-    } else {
-        printf("failed to parse adts header\n");
-        return -1;
-    }
-}
 
 void RtpSender::checkerror(int rtperr) {
     if (rtperr < 0) {
@@ -203,7 +161,7 @@ void RtpSender::send_aac(const string &destipstr, int destport,
   sess.SetDefaultMark(true);
   // 发送流媒体数据
   int len = 0;
-  struct AdtsHeader adtsHeader;
+  struct headerUtil::AdtsHeader adtsHeader;
   FILE *aac = fopen(filename.c_str(), "rb");
   if (aac == nullptr) {
     free(aac);
@@ -247,7 +205,7 @@ void RtpSender::send_aac(const string &destipstr, int destport,
       memcpy(frame, output, ADTS_HRADER_LENGTH);
       //output = output + ADTS_HRADER_LENGTH;
      
-      if (parseAdtsHeader(frame, &adtsHeader) < 0) {
+      if (headerUtil::parseAdtsHeader(frame, &adtsHeader) < 0) {
         E_LOG("parse err");
         break;
       }

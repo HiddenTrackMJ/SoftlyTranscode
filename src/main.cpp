@@ -14,7 +14,7 @@ extern int decode_test(std::string input, std::string output);
 extern int encode_test(std::string input, std::string output);
 
 #ifdef First
-int main(int argc, char *argv[]) {
+int mains(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");

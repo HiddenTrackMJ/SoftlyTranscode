@@ -6,7 +6,7 @@
  * wav 读出
  *
  */
-
+#pragma once
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

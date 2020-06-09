@@ -52,14 +52,10 @@ FFmpegDecoder::~FFmpegDecoder() {
     av_packet_free(&pkt);
 }
 
-int FFmpegDecoder::InputData(unsigned char *inputData, int inputLen,
-                                    ImageMat &mImageMat) {
+int FFmpegDecoder::InputData(unsigned char *inputData, int inputLen) {
     int ret = 0;
     int error = -1;
-    if (inputData == NULL) {
-        decode(NULL, mImageMat);
-    }
-    
+    //I_LOG("ret111: {}, pkt size: {}, data: {}", ret, pkt->size, inputData);
     while (inputLen > 0) {
         ret = av_parser_parse2(parser, c, &pkt->data, &pkt->size, inputData,
                                inputLen, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
@@ -70,21 +66,24 @@ int FFmpegDecoder::InputData(unsigned char *inputData, int inputLen,
         inputData += ret;
         inputLen -= ret;
 
-        // T_LOG("ret: {}, pkt size: {}, data: {}", ret, pkt->size, inputData);
+       // I_LOG("ret: {}, pkt size: {}, data: {}, dts {}", ret, pkt->size, pkt->pts, pkt->dts);
         if (pkt->size) {
 
-            error = decode(pkt, mImageMat);
+            error = decode(pkt);
 
-            //printf(
-            //    "size = %d .....stream_index = %d frame=%p  \n",
-            //    pkt->size, pkt->stream_index, frame);
         }
     }
-
+    pkt->data = NULL;
+    pkt->size = 0;
     return error;
 }
 
-int FFmpegDecoder::decode(AVPacket *mpkt, ImageMat &mImageMat) {
+AVPacket* FFmpegDecoder::getPkt() { return pkt; }
+
+
+AVFrame *FFmpegDecoder::getFrame() { return out_frame; }
+
+int FFmpegDecoder::decode(AVPacket *mpkt) {
     int ret;
     ret = avcodec_send_packet(c, mpkt);
     if (ret < 0) {
@@ -92,17 +91,22 @@ int FFmpegDecoder::decode(AVPacket *mpkt, ImageMat &mImageMat) {
         // exit(1);
     }
 
-    while (ret >= 0) {
+    //while (ret >= 0) {
         ret = avcodec_receive_frame(c, frame);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-            return 0;
+          return 0;
         else if (ret < 0) {
             E_LOG("Error during decoding");
             // exit(1);
         }
 
+        frame->pts = ts_gen.fetch_add(23);
+        I_LOG("ret: {}, pkt size: {}, data: {}, dts {}", ret, frame->pkt_size,
+              frame->pts, frame->best_effort_timestamp);
+        out_frame = frame;
         fflush(stdout);
 
-    }
+    //}
+    
     return 0;
 }
