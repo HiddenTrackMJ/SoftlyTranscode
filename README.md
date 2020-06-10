@@ -4,11 +4,12 @@
  - [x] libfdk-aac demo [参考代码](https://github.com/akanchi/aac-example)
  - [x] aac解码
  - [x] aac编码
- - [ ] dash转码
+ - [x] hls/dash转码
 
 
  adts -> LATM  
  参考;
+ https://blog.csdn.net/yingyemin/article/details/76570576
  https://www.cnblogs.com/ranson7zop/p/7199628.html 
  https://github.com/FFmpeg/FFmpeg/search?q=LATM&unscoped_q=LATM
  https://github.com/FFmpeg/FFmpeg/search?q=adts&unscoped_q=adts

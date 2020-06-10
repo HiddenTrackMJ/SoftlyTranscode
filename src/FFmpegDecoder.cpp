@@ -2,15 +2,14 @@
 #include "seeker/loggerApi.h"
 #include "FFmpegDecoder.h"
 #include <iostream>
-//#include "opencv2/opencv.hpp"
+
 
 FFmpegDecoder::FFmpegDecoder() {
-    //avcodec_register_all();
 
     pkt = av_packet_alloc();
     if (!pkt) exit(1);
 
-    /* find the MPEG-1 video decoder */
+    /* find the aac audio decoder */
     //codec = avcodec_find_encoder_by_name("libfdk_aac");
    // codec = avcodec_find_decoder(AV_CODEC_ID_H264);
     codec = avcodec_find_decoder(AV_CODEC_ID_AAC);
@@ -101,8 +100,8 @@ int FFmpegDecoder::decode(AVPacket *mpkt) {
         }
 
         frame->pts = ts_gen.fetch_add(23);
-        I_LOG("ret: {}, pkt size: {}, data: {}, dts {}", ret, frame->pkt_size,
-              frame->pts, frame->best_effort_timestamp);
+       /* I_LOG("ret: {}, pkt size: {}, data: {}, dts {}", ret, frame->pkt_size,
+              frame->pts, frame->best_effort_timestamp);*/
         out_frame = frame;
         fflush(stdout);
 

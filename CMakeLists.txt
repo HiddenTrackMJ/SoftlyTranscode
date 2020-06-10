@@ -95,7 +95,7 @@ add_executable (${PROJECT_NAME}
          "src/encoder.cpp" 
          "src/hls_encoder.cpp" 
          "src/muxing.cpp" 
-         "src/dash_encoder.cpp")
+         "src/dash_encoder.cpp" "src/muxer.cpp")
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE

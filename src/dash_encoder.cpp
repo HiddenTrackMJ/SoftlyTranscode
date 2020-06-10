@@ -177,6 +177,7 @@
 //  }
 //  for (i = 0; i < ifmt_ctx->nb_streams; i++) {
 //    out_stream = avformat_new_stream(ofmt_ctx, NULL);
+//  
 //    if (!out_stream) {
 //      av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream\n");
 //      return AVERROR_UNKNOWN;
