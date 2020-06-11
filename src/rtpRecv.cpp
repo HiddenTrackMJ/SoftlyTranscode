@@ -21,6 +21,7 @@
 #include "config.h"
 #include "seeker/loggerApi.h"
 #include "string"
+#include <chrono>
 
  extern "C" {
 #include "wav_reader.hpp"
@@ -40,8 +41,9 @@ void RtpReceiver::checkerror(int rtperr) {
     if (rtperr < 0) {
 //        E_LOG(RTPGetErrorString(rtperr));
 
-        E_LOG("RTPGetErrorStatus:{}", rtperr);
-        // exit(-1);
+        std::string err_msg = jrtplib::RTPGetErrorString(rtperr);
+
+        E_LOG("RTPGetErrorStatus:{}", err_msg);
     }
 }
 

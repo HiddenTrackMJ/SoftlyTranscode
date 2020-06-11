@@ -13,7 +13,7 @@
 #include "rtptimeutilities.h"
 #include "rtppacket.h"
 #include "rtperrors.h"
-#pragma comment(lib, "jrtplib.lib")
+#pragma comment(lib, "jrtplib.lib") 
 
 //common
 #include "seeker/socketUtil.h"
@@ -21,6 +21,7 @@
 #include "config.h"
 #include "seeker/loggerApi.h"
 #include "string"
+#include <chrono>
 
 #include "encoder.h"
 
@@ -51,82 +52,106 @@ void RtpSender::checkerror(int rtperr) {
 }
 
 void RtpSender::send_aac() {
+  uint16_t destport = 8080;
+  uint32_t destip;
+  int status, index;
+  std::string ipstr = "127.0.0.1";
+  uint8_t frame[2000] = {0};
+  unsigned char buffer[2000];
+  seeker::SocketUtil::startupWSA();
+  std::cout << "Enter the destination IP address" << std::endl;
+  std::cin >> ipstr;
+  destip = inet_addr(ipstr.c_str());
+  if (destip == INADDR_NONE) {
+    std::cerr << "Bad IP address specified" << std::endl;
+    return;
+  }
+  destip = ntohl(destip);
+ /* std::cout << "Enter the destination port" << std::endl;
+  std::cin >> destport;*/
 
-    uint16_t destport;
-    uint32_t destip;
-    int status, index;
-    std::string ipstr;
+  // 创建RTP会话
+  RTPSession sess;
+  RTPUDPv4TransmissionParams transparams;
+  RTPSessionParams sessparams;
+  sessparams.SetOwnTimestampUnit(1.0 / 8000.0);
+  transparams.SetPortbase(22400);
+  status = sess.Create(sessparams, &transparams);
+  checkerror(status);
+  RTPIPv4Address addr(destip, destport);
 
-    unsigned char buffer[2000];
-    seeker::SocketUtil::startupWSA();
-    std::cout << "Enter the destination IP address" << std::endl;
-    std::cin >> ipstr;
-    destip = inet_addr(ipstr.c_str());
-    if (destip == INADDR_NONE) {
-        std::cerr << "Bad IP address specified" << std::endl;
-        return;
+  status = sess.SetDefaultTimestampIncrement(100);
+  checkerror(status);
+  status = sess.AddDestination(addr);
+
+  checkerror(status);
+
+  // 设置RTP会话默认参数
+
+  sess.SetDefaultPayloadType(0);
+
+  sess.SetDefaultMark(true);
+
+  /*假设音频的采样率位44100，即每秒钟采样44100次
+
+  AAC一般将1024次采样编码成一帧，所以一秒就有44100/1024=43帧
+
+  RTP包发送的每一帧数据的时间增量为44100/43=1025
+
+  每一帧数据的时间间隔为1000/43=23ms*/
+  //    sess.SetDefaultTimestampIncrement(20);
+  sess.SetDefaultMark(true);
+
+  // 发送流媒体数据
+
+  index = 1;
+  struct headerUtil::AdtsHeader adtsHeader;
+  unsigned int read_len = 1000;
+  int len = 0;
+  char *filename =
+      "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/short.aac";  //"/Users/haoxue/Music/output.aac";
+  FILE *aac = fopen(filename, "rb");
+  if (aac == NULL) {
+    free(aac);
+    return;
+  }
+
+  do {
+    len = fread(frame, 1, ADTS_HRADER_LENGTH, aac);
+    //先读adts的前七个字节头
+
+    if (len <= 0) {
+      fseek(aac, 0, SEEK_SET);
+      I_LOG("send over");
+      break;
     }
-    destip = ntohl(destip);
-    std::cout << "Enter the destination port" << std::endl;
-    std::cin >> destport;
 
-    // 创建RTP会话
-    RTPSession sess;
-    RTPUDPv4TransmissionParams transparams;
-    RTPSessionParams sessparams;
-    sessparams.SetOwnTimestampUnit(1.0 / 8000.0);
-    transparams.SetPortbase(22400);
-    status = sess.Create(sessparams, &transparams);
-    checkerror(status);
-    RTPIPv4Address addr(destip, destport);
-
-    status = sess.SetDefaultTimestampIncrement(100);
-    checkerror(status);
-    status = sess.AddDestination(addr);
-
-    checkerror(status);
-
-
-    // 设置RTP会话默认参数
-
-    sess.SetDefaultPayloadType(0);
-
-    sess.SetDefaultMark(true);
-
-    /*假设音频的采样率位44100，即每秒钟采样44100次
-
-    AAC一般将1024次采样编码成一帧，所以一秒就有44100/1024=43帧
-
-    RTP包发送的每一帧数据的时间增量为44100/43=1025
-
-    每一帧数据的时间间隔为1000/43=23ms*/
-//    sess.SetDefaultTimestampIncrement(20);
-    sess.SetDefaultMark(true);
-
-    // 发送流媒体数据
-
-    index = 1;
-
-    unsigned int read_len = 1000;
-    int len = 0;
-    char *filename =
-        "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/encode.aac";  //"/Users/haoxue/Music/output.aac";
-    FILE *aac = fopen(filename, "rb");
-    if (aac == NULL) {
-        free(aac);
-        return;
+    if (headerUtil::parseAdtsHeader(frame, &adtsHeader) < 0) {
+      E_LOG("parse err");
+      break;
     }
 
-    do {
-        len = fread(buffer, 1, read_len, aac);
-        status = sess.SendPacket(buffer, len);
-        checkerror(status);
-        I_LOG("send packet size is {}", len);
-        RTPTime::Wait(RTPTime(0, 100000));
-    } while (len == read_len);
+    I_LOG("frmae len: {}", adtsHeader.aacFrameLength);
 
-    I_LOG("send data end");
+    len = fread(frame + ADTS_HRADER_LENGTH, 1, adtsHeader.aacFrameLength - 7,
+                aac);
 
+    if (len < 0) {
+      E_LOG("read err");
+      break;
+    }
+    // len = fread(buffer, 1, read_len, aac);
+    status = sess.SendPacket(frame, len + 7);
+    checkerror(status);
+    I_LOG("send packet size is {}", len);
+    std::this_thread::sleep_for(std::chrono::milliseconds(23));
+    // RTPTime::Wait(RTPTime(0, 2300));
+  } while (1);
+
+  I_LOG("send data end");
+  fclose(aac);
+  status = sess.SendPacket(frame, 3);
+  sess.BYEDestroy(RTPTime(0, 100), "Bye", 3);
 }
 
 
@@ -219,6 +244,7 @@ void RtpSender::send_aac(const string &destipstr, int destport,
       
       I_LOG("send packet size is {} ", adtsHeader.aacFrameLength);
       memset(output, 0, 4096);
+      std::this_thread::sleep_for(std::chrono::milliseconds(23));
       //RTPTime::Wait(RTPTime(0, 2300));
     }
 

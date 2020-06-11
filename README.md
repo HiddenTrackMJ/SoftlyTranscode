@@ -7,9 +7,11 @@
  - [x] hls/dash转码
 
 
+ 转码hls参考：
+  https://blog.csdn.net/yingyemin/article/details/76570576
+
  adts -> LATM  
  参考;
- https://blog.csdn.net/yingyemin/article/details/76570576
  https://www.cnblogs.com/ranson7zop/p/7199628.html 
  https://github.com/FFmpeg/FFmpeg/search?q=LATM&unscoped_q=LATM
  https://github.com/FFmpeg/FFmpeg/search?q=adts&unscoped_q=adts

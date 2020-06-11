@@ -9,6 +9,33 @@
 #include "muxer.h"
 #include <chrono>
 
+//test for recv and mux
+#include "fdk_dec.h"
+#include "rtpRecv.h"
+// jrtplib
+#include "rtperrors.h"
+#include "rtpipv4address.h"
+#include "rtppacket.h"
+#include "rtpsession.h"
+#include "rtpsessionparams.h"
+#include "rtptimeutilities.h"
+#include "rtpudpv4transmitter.h"
+
+#pragma comment(lib, "jrtplib.lib")
+// common
+#include "config.h"
+#include "seeker/common.h"
+#include "seeker/loggerApi.h"
+#include "seeker/socketUtil.h"
+#include "string"
+
+extern "C" {
+#include "wav_reader.hpp"
+#include "wav_writer.hpp"
+}
+
+
+
 Muxer::Muxer() {
   frame = av_frame_alloc();
   in_sample_rate = 48000;
@@ -41,20 +68,17 @@ void Muxer::initSwr(int audio_index) {
   }
 #if LIBSWRESAMPLE_VERSION_MINOR >= 17  // 根据版本不同，选用适当函数
   av_opt_set_int(pSwrCtx, "ich", in_channels, 0);
-  av_opt_set_int(pSwrCtx, "och",
-                 ofmt_ctx->streams[audio_index]->codec->channels, 0);
+  av_opt_set_int(pSwrCtx, "och", enc_ctx->channels, 0);
   av_opt_set_int(pSwrCtx, "in_sample_rate", in_sample_rate, 0);
-  av_opt_set_int(pSwrCtx, "out_sample_rate",
-                 ofmt_ctx->streams[audio_index]->codec->sample_rate, 0);
+  av_opt_set_int(pSwrCtx, "out_sample_rate", enc_ctx->sample_rate, 0);
   av_opt_set_sample_fmt(pSwrCtx, "in_sample_fmt", in_sample_fmt, 0);
-  av_opt_set_sample_fmt(pSwrCtx, "out_sample_fmt",
-                        ofmt_ctx->streams[audio_index]->codec->sample_fmt, 0);
+  av_opt_set_sample_fmt(pSwrCtx, "out_sample_fmt", enc_ctx->sample_fmt,
+                        0);
 
 #else
   pSwrCtx = swr_alloc_set_opts(
-      NULL, ofmt_ctx->streams[audio_index]->codec->channel_layout,
-      ofmt_ctx->streams[audio_index]->codec->sample_fmt,
-      ofmt_ctx->streams[audio_index]->codec->sample_rate, in_channel_layout,
+      NULL, enc_ctx->channel_layout, enc_ctx->sample_fmt,
+      enc_ctx->sample_rate, in_channel_layout,
       in_sample_fmt, in_sample_rate, 0, NULL);
 #endif
 
@@ -90,7 +114,59 @@ void Muxer::setup_array(uint8_t *out[32], AVFrame *in_frame,
   }
 }
 
-int Muxer::TransSample(AVFrame *in_frame, AVFrame *out_frame, int audio_index) {
+int Muxer::ReSample(AVFrame *in_frame, AVFrame *out_frame) {
+  int ret = 0;
+  /*I_LOG("ret_in_frame: {}, pkt size: {}, data: {}", ret, in_frame->pkt_size,
+        in_frame->pts);*/
+  int max_dst_nb_samples = 4096;
+  // int64_t dst_nb_samples;
+  int64_t src_nb_samples = in_frame->nb_samples;
+  out_frame->pts = in_frame->pts;
+  uint8_t *paudiobuf;
+  int decode_size, input_size, len;
+  if (pSwrCtx != NULL) {
+    out_frame->nb_samples = av_rescale_rnd(
+        swr_get_delay(pSwrCtx, enc_ctx->sample_rate) + src_nb_samples,
+        enc_ctx->sample_rate, in_sample_rate,
+        AV_ROUND_UP);
+
+    ret = av_samples_alloc(
+        out_frame->data, &out_frame->linesize[0],
+        enc_ctx->channels, out_frame->nb_samples,
+        enc_ctx->sample_fmt, 0);
+
+    if (ret < 0) {
+      av_log(NULL, AV_LOG_WARNING,
+             "[%s.%d %s() Could not allocate samples Buffer\n", __FILE__,
+             __LINE__, __FUNCTION__);
+      return -1;
+    }
+
+    max_dst_nb_samples = out_frame->nb_samples;
+    //输入也可能是分平面的，所以要做如下处理
+    uint8_t *m_ain[32];
+    setup_array(m_ain, in_frame, in_sample_fmt, src_nb_samples);
+
+    //注意这里，out_count和in_count是samples单位，不是byte
+    //所以这样av_get_bytes_per_sample(ifmt_ctx->streams[audio_index]->codec->sample_fmt)
+    //* src_nb_samples是错的
+    len = swr_convert(pSwrCtx, out_frame->data, out_frame->nb_samples,
+                      (const uint8_t **)in_frame->data, src_nb_samples);
+    //if (len < 0) {
+    //  char errmsg[BUF_SIZE_1K];
+    //  av_strerror(len, errmsg, sizeof(errmsg));
+    //  av_log(NULL, AV_LOG_WARNING, "[%s:%d] swr_convert!(%d)(%s)", __FILE__,
+    //         __LINE__, len, errmsg);
+    //  return -1;
+    //}
+  } else {
+    printf("pSwrCtx with out init!\n");
+    return -1;
+  }
+  return 0;
+}
+
+int Muxer::TransSample(AVFrame *in_frame, AVFrame *out_frame) {
   int ret;
   int max_dst_nb_samples = 4096;
   // int64_t dst_nb_samples;
@@ -100,16 +176,12 @@ int Muxer::TransSample(AVFrame *in_frame, AVFrame *out_frame, int audio_index) {
   int decode_size, input_size, len;
   if (pSwrCtx != NULL) {
     out_frame->nb_samples = av_rescale_rnd(
-        swr_get_delay(pSwrCtx,
-                      ofmt_ctx->streams[audio_index]->codec->sample_rate) +
-            src_nb_samples,
-        ofmt_ctx->streams[audio_index]->codec->sample_rate, in_sample_rate,
-        AV_ROUND_UP);
+        swr_get_delay(pSwrCtx, enc_ctx->sample_rate) + src_nb_samples,
+        enc_ctx->sample_rate, in_sample_rate, AV_ROUND_UP);
 
-    ret = av_samples_alloc(
-        out_frame->data, &out_frame->linesize[0],
-        ofmt_ctx->streams[audio_index]->codec->channels, out_frame->nb_samples,
-        ofmt_ctx->streams[audio_index]->codec->sample_fmt, 0);
+    ret = av_samples_alloc(out_frame->data, &out_frame->linesize[0],
+                           enc_ctx->channels, out_frame->nb_samples,
+                           enc_ctx->sample_fmt, 0);
 
     if (ret < 0) {
       av_log(NULL, AV_LOG_WARNING,
@@ -129,10 +201,11 @@ int Muxer::TransSample(AVFrame *in_frame, AVFrame *out_frame, int audio_index) {
     len = swr_convert(pSwrCtx, out_frame->data, out_frame->nb_samples,
                       (const uint8_t **)in_frame->data, src_nb_samples);
     if (len < 0) {
-      char errmsg[BUF_SIZE_1K];
-      av_strerror(len, errmsg, sizeof(errmsg));
-      av_log(NULL, AV_LOG_WARNING, "[%s:%d] swr_convert!(%d)(%s)", __FILE__,
-             __LINE__, len, errmsg);
+      W_LOG("swr_convert error!");
+      //char errmsg[BUF_SIZE_1K];
+      //av_strerror(len, errmsg, sizeof(errmsg));
+      //av_log(NULL, AV_LOG_WARNING, "[%s:%d] swr_convert!(%d)(%s)", __FILE__,
+      //       __LINE__, len, errmsg);
       return -1;
     }
   } else {
@@ -144,28 +217,32 @@ int Muxer::TransSample(AVFrame *in_frame, AVFrame *out_frame, int audio_index) {
 
 int Muxer::open_output_file(const char *filename) {
   AVStream *out_stream;
-  AVCodecContext *enc_ctx;
   AVCodec *encoder;
   int ret;
-  unsigned int i;
   ofmt_ctx = NULL;
-  avformat_alloc_output_context2(&ofmt_ctx, NULL, "dash", filename);
+  avformat_alloc_output_context2(&ofmt_ctx, NULL, "hls", filename);
   if (!ofmt_ctx) {
     av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
     return AVERROR_UNKNOWN;
   }
   {
+  
     out_stream = avformat_new_stream(ofmt_ctx, NULL);
     out_stream->index = 0;
     if (!out_stream) {
       av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream\n");
       return AVERROR_UNKNOWN;
     }
-
-    enc_ctx = out_stream->codec;
-    enc_ctx->codec_type = AVMEDIA_TYPE_AUDIO;
+   
 
     encoder = avcodec_find_encoder(AV_CODEC_ID_AAC);
+    enc_ctx = avcodec_alloc_context3(encoder);
+    if (!enc_ctx) {
+      E_LOG("Could not alloc an encoding context\n");
+      return -1;
+    }
+    enc_ctx = out_stream->codec;
+    enc_ctx->codec_type = AVMEDIA_TYPE_AUDIO;
     enc_ctx->sample_rate = in_sample_rate;
     enc_ctx->channel_layout = in_channel_layout;
     enc_ctx->channels = in_channels;
@@ -178,6 +255,13 @@ int Muxer::open_output_file(const char *filename) {
       av_log(NULL, AV_LOG_ERROR, "Cannot open audio encoder for stream \n");
       return ret;
     }
+
+    ret = avcodec_parameters_from_context(out_stream->codecpar, enc_ctx);
+    if (ret < 0) {
+      E_LOG("Could not copy the stream parameters\n");
+      return ret;
+    }
+
 
     av_opt_set(ofmt_ctx->priv_data, "preset", "superfast", 0);
     av_opt_set(ofmt_ctx->priv_data, "tune", "zerolatency", 0);
@@ -253,7 +337,9 @@ int Muxer::encode_write_frame(AVFrame *filt_frame, unsigned int stream_index) {
   ///* mux encoded frame */
   //ret = av_interleaved_write_frame(ofmt_ctx, &enc_pkt);
 
-  ret = avcodec_send_frame(ofmt_ctx->streams[stream_index]->codec, frame);
+  //I_LOG("codec sample_rate: {}, codec_type: {}, codec channels: {}", enc_ctx->sample_rate, enc_ctx->codec_type, enc_ctx->channels);
+
+  ret = avcodec_send_frame(enc_ctx, frame);
   if (ret < 0) {
     E_LOG("Error while sending a frame to the encoder: {}", ret);
     return -1;
@@ -262,7 +348,7 @@ int Muxer::encode_write_frame(AVFrame *filt_frame, unsigned int stream_index) {
   while (ret >= 0) {
     AVPacket pkt;
     av_init_packet(&pkt);
-    ret = avcodec_receive_packet(ofmt_ctx->streams[stream_index]->codec, &pkt);
+    ret = avcodec_receive_packet(enc_ctx, &pkt);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
       break;
     else if (ret < 0) {
@@ -271,16 +357,14 @@ int Muxer::encode_write_frame(AVFrame *filt_frame, unsigned int stream_index) {
     }
 
     /* rescale output packet timestamp values from codec to stream timebase */
-    av_packet_rescale_ts(&pkt,
-                         ofmt_ctx->streams[stream_index]->codec->time_base,
+    av_packet_rescale_ts(&pkt, enc_ctx->time_base,
                          ofmt_ctx->streams[stream_index]->time_base);
     pkt.stream_index = stream_index;
 
-    if (ofmt_ctx->streams[stream_index]->codec->codec_type != AVMEDIA_TYPE_VIDEO) {
+    if (enc_ctx->codec_type != AVMEDIA_TYPE_VIDEO) {
       pkt.pts = pkt.dts = a_total_duration;
       a_total_duration +=
-          av_rescale_q(filt_frame->nb_samples,
-                       ofmt_ctx->streams[stream_index]->codec->time_base,
+          av_rescale_q(filt_frame->nb_samples, enc_ctx->time_base,
                        ofmt_ctx->streams[stream_index]->time_base);
     }
 
@@ -299,10 +383,9 @@ int Muxer::encode_write_frame(AVFrame *filt_frame, unsigned int stream_index) {
 
 int Muxer::flush_encoder(unsigned int stream_index) {
   int ret;
-  int got_frame;
   AVPacket enc_pkt;
 
-  if (!(ofmt_ctx->streams[stream_index]->codec->codec->capabilities &
+  if (!(enc_ctx->codec->capabilities &
         AV_CODEC_CAP_DELAY))
     return 0;
 
@@ -310,11 +393,10 @@ int Muxer::flush_encoder(unsigned int stream_index) {
     enc_pkt.data = NULL;
     enc_pkt.size = 0;
     av_init_packet(&enc_pkt);
-
     av_log(NULL, AV_LOG_INFO, "Flushing stream #%u encoder\n", stream_index);
     ret = encode_write_frame(NULL, stream_index);
     if (ret < 0) break;
-    if (!got_frame) return 0;
+
   }
   return ret;
 }
@@ -368,8 +450,7 @@ int Muxer::mux(std::string input_aac, std::string dst) {
 
     frame = ff_decoder.getFrame();
 
-    // I_LOG("retxxx: {}, pkt size: {}, data: {}", ret, frame->pkt_size,
-    // frame->pts);
+     //I_LOG("retxxx: {}, pkt size: {}, data: {}", ret, frame->pkt_size, frame->pts);
 
     if (flag) {
       initSwr(stream_index);
@@ -377,14 +458,14 @@ int Muxer::mux(std::string input_aac, std::string dst) {
     }
 
     AVFrame *frame_out = av_frame_alloc();
-    if (0 != TransSample(frame, frame_out, stream_index)) {
+    if (0 != TransSample(frame, frame_out)) {
       av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
       ret = -1;
     }
     // frame_out->pts = frame->pkt_pts;
     ret = encode_write_frame(frame_out, stream_index);
     av_frame_free(&frame_out);
-    std::this_thread::sleep_for(std::chrono::milliseconds(23));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     ++count;
   }
 
@@ -404,4 +485,135 @@ int Muxer::mux(std::string input_aac, std::string dst) {
   // av_log(NULL, AV_LOG_ERROR, "Error occurred: %s\n", av_err2str(ret));
   // //av_err2str(ret));
   return ret ? 1 : 0;
+}
+
+int Muxer::recv_aac_mux(int port, std::string input_aac, std::string dst_file) {
+  using namespace jrtplib;
+
+  int ret;
+  FFmpegDecoder ff_decoder;
+  //AVFrame *frame = av_frame_alloc();
+  enum AVMediaType type;
+  unsigned int stream_index = 0;
+
+  if ((ret = open_output_file(dst_file.c_str())) < 0) return ret;
+  aacbsfc = av_bitstream_filter_init("aac_adtstoasc");
+  /* read all packets */
+  int count = 0;
+  int flag = 1;
+  int len = 0;
+
+  struct headerUtil::AdtsHeader adtsHeader;
+
+  FILE *aac = fopen(input_aac.c_str(), "rb");
+  if (aac == nullptr) {
+    free(aac);
+    return -1;
+  }
+
+  seeker::SocketUtil::startupWSA();
+
+  size_t payloadlen = 0;
+  uint8_t *payloaddata;
+
+  RTPSession rtpSession;
+  RTPSessionParams rtpSessionParams;
+  RTPUDPv4TransmissionParams rtpUdpv4Transmissionparams;
+
+  rtpSessionParams.SetOwnTimestampUnit(1.0 / 8000);
+  rtpSessionParams.SetUsePollThread(false);
+  rtpUdpv4Transmissionparams.SetPortbase(port);
+  rtpSessionParams.SetAcceptOwnPackets(true);
+
+  int status = rtpSession.Create(rtpSessionParams, &rtpUdpv4Transmissionparams);
+  RtpReceiver::checkerror(status);
+
+  bool stop = false;
+
+  if (flag) {
+    initSwr(stream_index);
+    flag = 0;
+  }
+
+  while (!stop) {
+    rtpSession.BeginDataAccess();
+    RTPPacket *pack;
+
+    // check incoming packets
+    if (rtpSession.GotoFirstSourceWithData()) {
+      do {
+        while ((pack = rtpSession.GetNextPacket()) != NULL) {
+
+          AVFrame *frame_out = av_frame_alloc();
+          payloaddata = pack->GetPayloadData();
+          payloadlen = pack->GetPayloadLength();
+
+          if (payloadlen < 100) {
+            std::cout << "Bye: " << (uint16_t *)payloaddata << std::endl;
+            goto Exit;
+          }
+
+          adts_header_t *adts = (adts_header_t *)(&payloaddata[0]);
+
+          if (adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf) {
+            I_LOG("333...");
+            break;
+          }
+
+          int aac_frame_size = adts->frame_length_0_to_1 << 11 |
+                               adts->frame_length_2_to_9 << 3 |
+                               adts->frame_length_10_to_12;
+
+          //I_LOG("size: {}, len, {}", aac_frame_size, payloadlen);
+
+          len = aac_frame_size;
+
+          ff_decoder.InputData((unsigned char *)&payloaddata[0], len);
+
+          frame = ff_decoder.getFrame();
+
+          //I_LOG("retxxx: {}, pkt size: {}, data: {}", ret, frame->pkt_size, frame->pts);
+
+         
+          try {
+          
+          } catch (const std::overflow_error &e) {
+            E_LOG("err: {}", e.what());
+          } catch (const std::runtime_error &e) {
+            E_LOG("err: {}", e.what());
+          } catch (const std::exception &e) {
+            E_LOG("err: {}", e.what());
+          } catch (...) {
+            E_LOG("err101");
+          }
+
+          if (0 != TransSample(frame, frame_out)) {
+            av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
+            ret = -1;
+          }
+         
+          ret = encode_write_frame(frame_out, stream_index);
+          av_frame_free(&frame_out);
+          
+          std::this_thread::sleep_for(std::chrono::milliseconds(23));
+          ++count;
+
+          rtpSession.DeletePacket(pack);
+        }
+      } while (rtpSession.GotoNextSourceWithData());
+    }
+
+    rtpSession.EndDataAccess();
+
+    int status = rtpSession.Poll();
+    RtpReceiver::checkerror(status);
+
+    RTPTime::Wait(RTPTime(0, 10));
+  }
+Exit:
+  av_write_trailer(ofmt_ctx);
+  //av_frame_free(&frame);
+  rtpSession.Destroy();
+
+  I_LOG("Closed sess");
 }

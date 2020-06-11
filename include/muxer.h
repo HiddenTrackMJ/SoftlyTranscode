@@ -36,6 +36,8 @@ class Muxer {
  private:
   AVFormatContext *ofmt_ctx;
 
+  AVCodecContext *enc_ctx;  //输出文件的codec
+
   SwrContext *pSwrCtx;
 
   int in_sample_rate;
@@ -62,7 +64,9 @@ public:
 
   void setup_array(uint8_t *out[32], AVFrame *in_frame, enum AVSampleFormat format, int samples);
 
-  int TransSample(AVFrame *in_frame, AVFrame *out_frame, int audio_index);
+  int TransSample(AVFrame *in_frame, AVFrame *out_frame);
+
+  int ReSample(AVFrame *in_frame, AVFrame *out_frame);
 
   int open_output_file(const char *filename);
 
@@ -71,4 +75,6 @@ public:
   int flush_encoder(unsigned int stream_index);
 
   int mux(std::string input_aac, std::string dst);
+
+  int recv_aac_mux(int port, std::string input_aac, std::string dst);
 };

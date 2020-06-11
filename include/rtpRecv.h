@@ -11,7 +11,7 @@ class RtpReceiver{
 public:
     void rtpReceivcer_adts();
     void rtpReceivcer_latm();
-    void checkerror(int rtperr);
+    static void checkerror(int rtperr);
     void recv_aac();
     void recv_aac(int port);
 };

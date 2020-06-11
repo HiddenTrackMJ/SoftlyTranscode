@@ -20,11 +20,11 @@ int main(int argc, char *argv[]) {
 
   I_LOG("This is TransCode");
 
-  Muxer muxer;
-  muxer.mux("D:/Study/Scala/VSWS/transcode/out/build/x64-Release/encode.aac",
-            "./dash/index.mpd");
+  
+  //muxer.mux(  "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/encode.aac",
+  //    "./hls/master.m3u8");
+  //return 0;
 
-  return 0;
   int select;
 
   std::cout << "Please select mode, 1 for decoding else for encoding: "
@@ -33,14 +33,17 @@ int main(int argc, char *argv[]) {
 
   if (select == 1) {
     RtpSender sender;
-    //sender.send_aac();
-    sender.send_aac("127.0.0.1", 8080, "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/1.wav");
+    sender.send_aac();
+    //sender.send_aac("127.0.0.1", 8080, "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/1.wav");
     //decode_test("short.aac", "short.wav");
   } else {
 
     RtpReceiver recvr;
+    Muxer muxer;
     //recvr.recv_aac();
-    recvr.recv_aac(8080);
+    //recvr.recv_aac(8080);
+    muxer.recv_aac_mux(8080, "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/encode.aac",
+              "./hls/master.m3u8");
     //encode_test("1.wav", "time.aac");
   }
 
