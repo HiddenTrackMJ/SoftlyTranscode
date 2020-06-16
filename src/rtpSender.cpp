@@ -59,8 +59,6 @@ void RtpSender::send_aac() {
   uint8_t frame[2000] = {0};
   unsigned char buffer[2000];
   seeker::SocketUtil::startupWSA();
-  std::cout << "Enter the destination IP address" << std::endl;
-  std::cin >> ipstr;
   destip = inet_addr(ipstr.c_str());
   if (destip == INADDR_NONE) {
     std::cerr << "Bad IP address specified" << std::endl;

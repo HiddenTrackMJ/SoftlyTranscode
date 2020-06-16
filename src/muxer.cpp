@@ -48,6 +48,8 @@ Muxer::Muxer() {
 
   packet.data = NULL;
   packet.size = 0;
+
+  stop = false;
 }
 
 Muxer::~Muxer() {
@@ -616,4 +618,176 @@ Exit:
   rtpSession.Destroy();
 
   I_LOG("Closed sess");
+}
+
+
+int Muxer::recv_aac_thread(int port) {  //接收aac rtp流存入list
+  using namespace jrtplib;
+  int ret;
+  int len = 0;
+
+  struct headerUtil::AdtsHeader adtsHeader;
+
+  seeker::SocketUtil::startupWSA();
+
+  size_t payloadlen = 0;
+  uint8_t *payloaddata;
+  int pos = 0;
+
+  RTPSession rtpSession;
+  RTPSessionParams rtpSessionParams;
+  RTPUDPv4TransmissionParams rtpUdpv4Transmissionparams;
+
+  rtpSessionParams.SetOwnTimestampUnit(1.0 / 8000);
+  rtpSessionParams.SetUsePollThread(false);
+  rtpUdpv4Transmissionparams.SetPortbase(port);
+  rtpSessionParams.SetAcceptOwnPackets(true);
+
+  int status = rtpSession.Create(rtpSessionParams, &rtpUdpv4Transmissionparams);
+  RtpReceiver::checkerror(status);
+  bool remain = true;
+
+  while (remain) {
+    rtpSession.BeginDataAccess();
+    RTPPacket *pack;
+
+    // check incoming packets
+    if (rtpSession.GotoFirstSourceWithData()) {
+      do {
+        while ((pack = rtpSession.GetNextPacket()) != NULL) {
+          payloaddata = pack->GetPayloadData();
+          payloadlen = pack->GetPayloadLength();
+
+          if (payloadlen < 50) {
+            std::cout << "Bye: " << (uint32_t *)payloaddata << std::endl;
+            remain = false;
+            break;
+          }
+          pos = 0;
+         
+          while (1) {
+            int aac_frame_size;
+            uint8_t *buff_c;
+            if (payloadlen - pos < 7) {
+              //I_LOG("this pkt is over");
+              break;
+            }
+
+            adts_header_t *adts = (adts_header_t *)(&payloaddata[0] + pos);
+
+            if (adts->syncword_0_to_8 != 0xff ||
+                adts->syncword_9_to_12 != 0xf) {
+              W_LOG("333...");
+              break;
+            }
+
+            aac_frame_size = adts->frame_length_0_to_1 << 11 |
+                                 adts->frame_length_2_to_9 << 3 |
+                                 adts->frame_length_10_to_12;
+
+            //I_LOG("size: {}, len, {}, pos {}", aac_frame_size, payloadlen, pos);
+
+            buff_c = new uint8_t[aac_frame_size + 1]();
+            memcpy(buff_c, &payloaddata[0] + pos, aac_frame_size);
+            std::unique_ptr<uint8_t> pkt{buff_c};
+
+            pkt_list_mu->lock();
+            pkt_list.push_back(std::make_pair(std::move(pkt), aac_frame_size));
+            pkt_list_mu->unlock();
+            pkt_list_cv->notify_one();
+
+            ++pkt_count;
+            pos += aac_frame_size;
+          }
+          Out:
+          rtpSession.DeletePacket(pack);
+        }
+        //if (!remain) break;
+      } while (rtpSession.GotoNextSourceWithData());
+    }
+
+    rtpSession.EndDataAccess();
+
+    int status = rtpSession.Poll();
+    RtpReceiver::checkerror(status);
+
+    RTPTime::Wait(RTPTime(0, 10));
+  }
+
+  rtpSession.Destroy();
+
+  close_thread();
+
+  I_LOG("Closed sess");
+}
+
+int Muxer::process_thread(std::string dst_file) {  //处理pkt_list 转码
+
+  int ret;
+  int count = 0;
+  int flag = 1;
+  unsigned int stream_index = 0;
+  FFmpegDecoder ff_decoder;
+
+  if ((ret = open_output_file(dst_file.c_str())) < 0) return ret;
+  // aacbsfc = av_bitstream_filter_init("aac_adtstoasc");
+
+  if (flag) {
+    initSwr(stream_index);
+    flag = 0;
+  }
+
+  while (1) {
+    AVFrame *frame_out = av_frame_alloc();
+    std::unique_lock<std::mutex> lock(*pkt_list_mu);
+    pkt_list_cv->wait(lock, [this] { return !pkt_list.empty() || stop; });
+    if (stop && pkt_list.empty()) break;
+    uint8_t *pkt = pkt_list.front().first.release();
+    int size = pkt_list.front().second;
+    pkt_list.pop_front();
+
+    ff_decoder.InputData((unsigned char *)&pkt[0], size);
+    frame = ff_decoder.getFrame();
+
+    if (0 != TransSample(frame, frame_out)) {
+      av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
+      ret = -1;
+    }
+
+    ret = encode_write_frame(frame_out, stream_index);
+    av_frame_free(&frame_out);
+    ++count;
+    
+  }
+
+  av_write_trailer(ofmt_ctx);
+  I_LOG("mux to {} stopped...", dst_file);
+}
+
+int Muxer::open_thread(int port, std::string dst) {
+  try {
+    std::thread recv_thread{std::mem_fn(&Muxer::recv_aac_thread),
+                            std::ref(*this), port};
+
+    recv_thread.detach();
+    std::thread mux_thread{std::mem_fn(&Muxer::process_thread), std::ref(*this),
+                           dst};
+
+    mux_thread.join();
+  } catch (const std::system_error &e) {
+    E_LOG("Caught system_error with code");
+    std::cout << e.code() << std::endl;
+    std::cout << e.what() << std::endl;
+  }
+}
+
+void Muxer::close_thread() {
+  stop = true;
+
+  int i = 5;
+  while (i > 0) {
+    pkt_list_cv->notify_one();
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    i--;
+  }
 }

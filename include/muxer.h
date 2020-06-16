@@ -23,6 +23,9 @@ extern "C" {
 #include <stdio.h>
 #include <string>
 #include <iostream>
+#include <chrono>
+#include <list>
+
 
 #include "FFmpegDecoder.h"
 #include "adts_header.hpp"
@@ -31,6 +34,7 @@ extern "C" {
 #define BUF_SIZE_20K 2048000
 #define BUF_SIZE_1K 1024000
 
+using std::unique_ptr;
 
 class Muxer {
  private:
@@ -53,6 +57,17 @@ class Muxer {
   AVFrame *frame;
 
   AVPacket packet;  //= { .data = NULL, .size = 0 };
+
+  bool stop;
+
+  int pkt_count = 0;
+
+  std::list<std::pair<std::unique_ptr<uint8_t>, int>> pkt_list{};
+
+  unique_ptr<std::mutex> pkt_list_mu = unique_ptr<std::mutex>(new std::mutex);
+
+  unique_ptr<std::condition_variable> pkt_list_cv =
+      unique_ptr<std::condition_variable>(new std::condition_variable);
 
 
 public:
@@ -77,4 +92,12 @@ public:
   int mux(std::string input_aac, std::string dst);
 
   int recv_aac_mux(int port, std::string input_aac, std::string dst);
+
+  int recv_aac_thread(int port);
+
+  int process_thread(std::string dst_file);
+
+  int open_thread(int port, std::string dst);
+
+  void close_thread();
 };
