@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-D__STDC_CONSTANT_MACROS")
 
 include(./.SET_LOCAL_PATH.cmake)
+# include(./cPackInstall.cmake)
 
 #=======================ffmpeg=============================
 
@@ -80,22 +81,30 @@ endif()
 
 #=======================jrtplib============================
 
-add_executable (${PROJECT_NAME}
-       "src/main.cpp" 
-       "src/FFmpegDecoder.cpp"
-        "src/remuxing.cpp" 
-        "src/fdk_enc.cpp" 
-        "src/fdk_dec.cpp" 
-         "src/test_enc.cpp" 
-         "src/test_dec.cpp" 
-         "src/rtpRecv.cpp"
-         "include/fdk_demo.hpp"
-         "src/rtpSender.cpp" 
-         "src/RtpSess.cpp" 
-         "src/encoder.cpp" 
-         "src/hls_encoder.cpp" 
-         "src/muxing.cpp" 
-         "src/dash_encoder.cpp" "src/muxer.cpp")
+
+aux_source_directory(./src CPP_LIST)
+
+add_executable (${PROJECT_NAME} 
+ #       ${CPP_LIST}
+ #      "src/main.cpp" 
+ #     "src/FFmpegDecoder.cpp"
+ #       "src/remuxing.cpp" 
+ #       "src/fdk_enc.cpp" 
+ #       "src/fdk_dec.cpp" 
+ #        "src/test_enc.cpp" 
+ #       "src/test_dec.cpp" 
+ #        "src/rtpRecv.cpp"
+ #        "include/fdk_demo.hpp"
+ #         "src/rtpSender.cpp" 
+ #       "src/RtpSess.cpp" 
+ #        "src/encoder.cpp" 
+ #         "src/hls_encoder.cpp" 
+ #        "src/muxing.cpp" 
+ #        "src/dash_encoder.cpp" 
+ #        "src/muxer.cpp" 
+          "src/audio_avfilter.cpp"
+         )
+
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
@@ -126,3 +135,33 @@ target_link_libraries(${PROJECT_NAME}
         ${FDK_LIBRARY}
         )
 
+
+include (InstallRequiredSystemLibraries)
+set(CPACK_PACKAGE_NAME  "transcode")
+set(CPACK_PACKAGE_DIRECTORY "./")
+set(CPACK_PACKAGE_DESCRIPTION "A TEST")
+set(CPACK_PACKAGE_DIRECTORY ${PROJECT_SOURCE_DIR}/pack)
+set(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
+set(PROJECT_VERSION_FULL ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
+
+install(TARGETS transcode 
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
+
+
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "HiddenTrack")
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_SOURCE_IGNORE_FILES
+        ${PROJECT_SOURCE_DIR}/build
+        ${PROJECT_SOURCE_DIR}/pack
+        ${PROJECT_SOURCE_DIR}/.git
+        ${PROJECT_SOURCE_DIR}/.gitignore
+     
+        )
+
+include (CPack)
