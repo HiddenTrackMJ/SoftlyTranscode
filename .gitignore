@@ -18,6 +18,7 @@ _deps
 include/*.db
 include/*.html
 out/
+pack
 build/
 .SET_LOCAL_PATH.cmake
 
