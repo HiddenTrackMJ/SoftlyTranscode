@@ -41,6 +41,14 @@ find_library(SWSCALE_LIBRARY swscale)
 
 #=======================ffmpeg=============================
 
+######################################
+#  SDL2 lib setting
+######################################
+#make sure SDL2.dll is in your PATH.
+
+set(SDL_INCLUDE_DIR "D:/Study/Scala/VSWS/ffmpeg/SDL2-2.0.12/include")
+set(SDL_LIBRARY "D:/Study/Scala/VSWS/ffmpeg/SDL2-2.0.12/lib/x64/SDL2.lib")
+
 
 #=======================libfdk-aac=========================
 find_library(FDK_LIBRARY fdk-aac)
@@ -103,12 +111,13 @@ add_executable (${PROJECT_NAME}
  #        "src/dash_encoder.cpp" 
  #        "src/muxer.cpp" 
           "src/audio_avfilter.cpp"
-         )
+)
 
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
         ${PROJECT_SOURCE_DIR}/include
+		${SDL_INCLUDE_DIR}
         ${JTHREAD_INCLUDE_PATH}
         ${JRTPLIB_INCLUDE_PATH}
         ${AVCODEC_INCLUDE_DIR}
@@ -133,6 +142,7 @@ target_link_libraries(${PROJECT_NAME}
         ${SWRESAMPLE_LIBRARY}
         ${SWSCALE_LIBRARY}
         ${FDK_LIBRARY}
+        ${SDL_LIBRARY}
         )
 
 
