@@ -40,13 +40,18 @@ extern "C" {
 
 #include <string>
 #include <iostream>
+#include <thread>
 #include <tuple>
 #include "FFmpegUtil.h"
 #include "wav_writer.hpp"
 #include "wav_reader.hpp"
 
+#define BUF_SIZE_20K 2048000
+#define BUF_SIZE_1K 1024000
+
+
 static const char *filter_descr =
-    "aresample=8000,aformat=sample_fmts=s16:channel_layouts=mono";
+    "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
 static const char *player = "ffplay -f s16le -ar 8000 -ac 1 -";
 
 static AVFormatContext *fmt_ctx;
@@ -58,6 +63,125 @@ static int audio_stream_index = -1;
 void *wav = NULL;
 std::string output = "./test.wav";
 FILE *file = fopen("tmp.pcm", "ab");
+
+static SwrContext *pSwrCtx = NULL;
+
+void initSwr(int audio_index) {
+
+  if (NULL == pSwrCtx) {
+    pSwrCtx = swr_alloc();
+  }
+
+  pSwrCtx = swr_alloc_set_opts(
+      NULL, fmt_ctx->streams[audio_index]->codec->channel_layout,
+      fmt_ctx->streams[audio_index]->codec->sample_fmt,
+      fmt_ctx->streams[audio_index]->codec->sample_rate,
+      fmt_ctx->streams[audio_index]->codec->channel_layout,
+      fmt_ctx->streams[audio_index]->codec->sample_fmt,
+      fmt_ctx->streams[audio_index]->codec->sample_rate, 0,
+      NULL);
+
+  if(swr_init(pSwrCtx))
+    std::cout << "swr init" << std::endl;
+  else {
+    std::cout << " swr init err " << std::endl;
+  }
+
+}
+
+
+static void setup_array(uint8_t *out[32], AVFrame *in_frame,
+                        enum AVSampleFormat format, int samples) {
+  if (av_sample_fmt_is_planar(format)) {
+    int i;
+    int plane_size = av_get_bytes_per_sample((format)) * samples;
+    in_frame->data[0] + i *plane_size;
+    for (i = 0; i < in_frame->channels; i++) {
+      out[i] = in_frame->data[i];
+    }
+  } else {
+    out[0] = in_frame->data[0];
+  }
+}
+
+std::tuple<int, int> reSample(uint8_t *dataBuffer, int dataBufferSize,
+                              const AVFrame *frame) {
+  std::cout << "reSample: nb_samples=" << frame->nb_samples
+            << ", sample_rate = " << frame->sample_rate
+            << ", frame_data: " << (const uint8_t **)&frame->data[0]
+            << ", reSample:dataBufferSize=" << dataBufferSize
+            << ", dataBuffer = " << (const uint8_t **)&dataBuffer << std::endl;
+
+  int outSamples =
+      swr_convert(pSwrCtx, &dataBuffer, dataBufferSize,
+                  (const uint8_t **)&frame->data[0], frame->nb_samples);
+   std::cout << "reSample: nb_samples=" << frame->nb_samples << ", sample_rate = " << frame->sample_rate <<  ", outSamples=" << outSamples << std::endl;
+  if (outSamples <= 0) {
+    // throw std::runtime_error("error: outSamples=" + outSamples);
+  }
+
+  int outDataSize = av_samples_get_buffer_size(
+      NULL, dec_ctx->channels, outSamples,
+      dec_ctx->sample_fmt, 1);
+
+  if (outDataSize <= 0) {
+    // throw std::runtime_error("error: outDataSize=" + outDataSize);
+  }
+
+  return {outSamples, outDataSize};
+}
+
+int TransSample(AVFrame *in_frame, AVFrame *out_frame, int audio_index) {
+  int ret;
+  int max_dst_nb_samples = 4096;
+  int64_t src_nb_samples = in_frame->nb_samples;
+  out_frame->pts = in_frame->pts;
+  uint8_t *paudiobuf;
+  int decode_size, input_size, len;
+  
+  if (pSwrCtx != nullptr) {
+    out_frame->nb_samples = av_rescale_rnd(
+        swr_get_delay(pSwrCtx, dec_ctx->sample_rate) + src_nb_samples,
+        dec_ctx->sample_rate, dec_ctx->sample_rate,
+        AV_ROUND_UP);
+
+    ret = av_samples_alloc(
+        out_frame->data, &out_frame->linesize[0],
+                           dec_ctx->channels, out_frame->nb_samples,
+                           dec_ctx->sample_fmt, 0);
+
+    if (ret < 0) {
+      av_log(NULL, AV_LOG_WARNING,
+             "[%s.%d %s() Could not allocate samples Buffer\n", __FILE__,
+             __LINE__, __FUNCTION__);
+      return -1;
+    }
+
+    max_dst_nb_samples = out_frame->nb_samples;
+
+    uint8_t *m_ain[32];
+    setup_array(m_ain, in_frame,
+                dec_ctx->sample_fmt,
+                src_nb_samples);
+
+
+    len = swr_convert(pSwrCtx, out_frame->data, out_frame->nb_samples,
+                      (const uint8_t **)in_frame->data, src_nb_samples);
+    
+    if (len < 0) {
+      char errmsg[BUF_SIZE_1K];
+      av_strerror(len, errmsg, sizeof(errmsg));
+      av_log(NULL, AV_LOG_WARNING, "[%s:%d] swr_convert!(%d)(%s)", __FILE__,
+             __LINE__, len, errmsg);
+      return -1;
+    }
+  } else {
+    std::cout << "others " << std::endl;
+    printf("pSwrCtx with out init!\n");
+    return -1;
+  }
+  return 0;
+}
 
 
 static int open_input_file(const char *filename) {
@@ -227,7 +351,7 @@ end:
 
 static void print_frame(const AVFrame *frame) {
   const int n = frame->nb_samples *
-                av_get_channel_layout_nb_channels(frame->channel_layout);
+                av_get_channel_layout_nb_channels(dec_ctx->channel_layout);
   //std::cout << "print_frame" << std::endl;
   const uint16_t *p = (uint16_t *)frame->data[0];
   const uint16_t *p_end = p + n;
@@ -247,6 +371,7 @@ static void print_frame(const AVFrame *frame) {
   //  perror("fopen tmp.aac successful\n");
   //}
   //fwrite(frame->data[0], n , 1, file);
+
  
 
   if (!wav) {
@@ -262,6 +387,7 @@ static void print_frame(const AVFrame *frame) {
 void audio_callback(void *userdata, Uint8 *stream, int len) {
   using namespace std;
   //AudioData *audioData = (AudioData *)userdata;
+  std::cout << " call back"<< std::endl;
   FFmpegUtil::ReSampler *reSampler = (FFmpegUtil::ReSampler *)userdata;
 
   static uint8_t *outBuffer = nullptr;
@@ -270,7 +396,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
   static AVPacket *packet = (AVPacket *)av_malloc(sizeof(AVPacket));
   int ret = 0;
   av_init_packet(packet);
-  //AVFormatContext *fmt_ctxd = fmt_ctx;
+  //AVFormatContext *fmt_ctx = fmt_ctx;
   AVCodecContext *codec_ctx = dec_ctx;
 
   while (true) {
@@ -296,6 +422,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
         }
       } else if (ret == AVERROR(EAGAIN)) {
         // buff full, can not decode anymore, do nothing.
+        cout << "Failed to avcodec_send_packet  fullll" << endl;
       } else {
         cout << "Failed to avcodec_send_packet" << endl;
       }
@@ -305,21 +432,32 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
   int outDataSize = -1;
   int outSamples = -1;
 
-  if (outBuffer == nullptr) {
-    outBufferSize = reSampler->allocDataBuf(&outBuffer, aFrame->nb_samples);
-  } else {
-    memset(outBuffer, 0, outBufferSize);
-  }
+  std::cout << "test: " << aFrame->nb_samples << std::endl;
 
-  std::tie(outSamples, outDataSize) =
-      reSampler->reSample(outBuffer, outBufferSize, aFrame);
+  //if (outBuffer == nullptr) {
+  //  outBufferSize = 2 * aFrame->nb_samples *
+  //                  av_get_channel_layout_nb_channels(aFrame->channel_layout);
+  //  outBuffer = (uint8_t *)av_malloc(sizeof(uint8_t) * outBufferSize);
+  //  //reSampler->allocDataBuf(&outBuffer, aFrame->nb_samples);
+  //} else {
+  //  memset(outBuffer, 0, outBufferSize);
+  //}
 
-  if (outDataSize != len) {
-    cout << "WARNING: outDataSize[" << outDataSize << "] != len[" << len << "]"
-         << endl;
-  }
+  //try {
+  //  std::tie(outSamples, outDataSize) =
+  //      reSample(outBuffer, outBufferSize, aFrame);
+  //} catch (std::runtime_error e) {
+  //  std::cout << e.what() << std::endl;
+  //}
 
-  std::memcpy(stream, outBuffer, outDataSize);
+  //if (outDataSize != len) {
+  //  cout << "WARNING: outDataSize[" << outDataSize << "] != len[" << len << "]"
+  //       << endl;
+  //}
+
+  std::memcpy(stream, &aFrame->data[0],
+              2 * aFrame->nb_samples *
+                  av_get_channel_layout_nb_channels(aFrame->channel_layout));
 }
 
 void playAudio(FFmpegUtil::ffmpeg_util f, SDL_AudioDeviceID &audioDeviceID) {
@@ -339,13 +477,14 @@ void playAudio(FFmpegUtil::ffmpeg_util f, SDL_AudioDeviceID &audioDeviceID) {
   outAudio.sampleRate = inAudio.sampleRate;
 
   FFmpegUtil::ReSampler reSampler(inAudio, outAudio);
+  reSampler.initx(inAudio, outAudio);
 
 
 
   SDL_AudioSpec audio_spec;
   SDL_AudioSpec spec;
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  //std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   // set audio settings from codec info
   audio_spec.freq = acodec_ctx->sample_rate;
@@ -387,26 +526,33 @@ int main(int argc, char **argv) {
   //  exit(1);
   //}
 
-  std::string file_name = "D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
+  std::string file_name =
+      "D:/Download/Videos/LadyLiu/Trip.flv";  
+  //"D:/Study/Scala/VSWS/transcode/out/build/x64-Release/trip.mp3";
+  //"D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
 
 
-  if ((ret = open_input_file(file_name.c_str())) < 0) goto end;
-  if ((ret = init_filters(filter_descr)) < 0) goto end;
+  if ((ret = open_input_file(file_name.c_str())) < 0) return -1;  // goto end;
+  if ((ret = init_filters(filter_descr)) < 0) return -1;          // goto end;
 
     // sdl play audio
-  //FFmpegUtil::ffmpeg_util ffmpeg_ctx(file_name);
-  //SDL_setenv("SDL_AUDIO_ALSA_SET_BUFFER_SIZE", "1", 1);
+  FFmpegUtil::ffmpeg_util ffmpeg_ctx(file_name);
+  SDL_setenv("SDL_AUDIO_ALSA_SET_BUFFER_SIZE", "1", 1);
 
-  //if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER)) {
-  //  SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to init SDL - %s\n !",
-  //               SDL_GetError);
-  //  return -1;
-  //}
+  if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER)) {
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to init SDL - %s\n !",
+                 SDL_GetError);
+    return -1;
+  }
 
-  //SDL_AudioDeviceID audioDeviceID;
-  //playAudio(ffmpeg_ctx, audioDeviceID);
+  SDL_AudioDeviceID audioDeviceID;
+  std::thread audio_thread(playAudio, ffmpeg_ctx, std::ref(audioDeviceID));
+  audio_thread.join();
+  std::this_thread::sleep_for(std::chrono::milliseconds(20000));
+  return 0;
 
   /* read all packets */
+  initSwr(audio_stream_index);
   while (1) {
     if ((ret = av_read_frame(fmt_ctx, &packet)) < 0) break;
 
@@ -429,6 +575,10 @@ int main(int argc, char **argv) {
         }
 
         if (ret >= 0) {
+          AVFrame *frame_out = av_frame_alloc();
+
+         // print_frame(frame);
+          
           /* push the audio data from decoded frame into the filtergraph */
           if (av_buffersrc_add_frame_flags(buffersrc_ctx, frame,
                                            AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
@@ -442,10 +592,16 @@ int main(int argc, char **argv) {
             ret = av_buffersink_get_frame(buffersink_ctx, filt_frame);
             if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
             if (ret < 0) goto end;
-            print_frame(frame);
+            std::cout << "out_frame nb_sample: " << frame_out->data
+                      << std::endl;
+            if (0 != TransSample(filt_frame, frame_out, audio_stream_index)) {
+              av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
+            }
+            print_frame(frame_out);
             av_frame_unref(filt_frame);
           }
           av_frame_unref(frame);
+          av_frame_free(&frame_out);
         }
       }
     }

@@ -111,7 +111,9 @@ add_executable (${PROJECT_NAME}
  #        "src/dash_encoder.cpp" 
  #        "src/muxer.cpp" 
           "src/audio_avfilter.cpp"
-)
+          "include/FFmpegUtil.h"
+ #         "src/audio_filter.cpp"
+ )
 
 
 target_include_directories(${PROJECT_NAME}

@@ -149,6 +149,8 @@ int TransSample(AVFrame *in_frame, AVFrame *out_frame, int audio_index) {
   }
   return 0;
 }
+
+
 static int open_input_file(const char *filename) {
   int ret;
   unsigned int i;

@@ -212,6 +212,7 @@ struct AudioInfo {
 
 
 class ReSampler {
+ private:
   SwrContext* swr;
 
  public:
@@ -222,7 +223,7 @@ class ReSampler {
     int64_t layout = AV_CH_LAYOUT_STEREO;
     int sampleRate = sr;
     int channels = 2;
-    AVSampleFormat format = AV_SAMPLE_FMT_S16;
+    AVSampleFormat format = AV_SAMPLE_FMT_FLTP;
 
     return AudioInfo(layout, sampleRate, channels, format);
   }
@@ -234,6 +235,27 @@ class ReSampler {
     if (swr_init(swr)) {
       throw std::runtime_error("swr_init error.");
     }
+    else {
+      std::cout << "swr_init successfully!" << std::endl;
+    }
+  }
+
+   void initx(AudioInfo input, AudioInfo output) {
+    /*swr = swr_alloc_set_opts(nullptr, out.layout, out.format, out.sampleRate,
+                             in.layout, in.format, in.sampleRate, 0, nullptr);*/
+
+    if (!swr) {
+      throw std::runtime_error("swr_init error.");
+    } else {
+      std::cout << "swr_init successfully!" << std::endl;
+      std::cout << "out layout: " << out.layout << "  out fmt: " << out.format
+                << "  out sampleRate: " << out.sampleRate << std::endl;
+    }
+
+    if (!swr)
+      std::cout << "123" << std::endl;
+    else
+      std::cout << "456" << std::endl;
   }
 
   int allocDataBuf(uint8_t** outData, int inputSamples) {
@@ -271,7 +293,8 @@ class ReSampler {
     std::cout << "GuessOutSamplesPerChannel: " << guessOutSamplesPerChannel
               << std::endl;
     std::cout << "GuessOutSize: " << guessOutSize << std::endl;
-
+    std::cout << "bytePerOutSample: " << bytePerOutSample << std::endl;
+    guessOutSize = 4096;
     guessOutSize *= 1.2;  // just make sure.
 
     *outData = (uint8_t*)av_malloc(sizeof(uint8_t) * guessOutSize);
@@ -282,20 +305,28 @@ class ReSampler {
 
   std::tuple<int, int> reSample(uint8_t* dataBuffer, int dataBufferSize,
                                 const AVFrame* frame) {
-    int outSamples =
+    
+    std::cout << "reSample: nb_samples=" << frame->nb_samples
+              << ", sample_rate = " << frame->sample_rate
+              << ", frame_data: " << (const uint8_t**)&frame->data[0]   
+              << ", reSample:dataBufferSize=" << dataBufferSize
+              << ", dataBuffer = " << (const uint8_t**)&dataBuffer 
+        << std::endl;
+
+
+      int outSamples =
         swr_convert(swr, &dataBuffer, dataBufferSize,
                     (const uint8_t**)&frame->data[0], frame->nb_samples);
-    // cout << "reSample: nb_samples=" << frame->nb_samples << ", sample_rate
-    // = " << frame->sample_rate <<  ", outSamples=" << outSamples << endl;
+    //std::cout << "reSample: nb_samples=" << frame->nb_samples << ", sample_rate = " << frame->sample_rate <<  ", outSamples=" << outSamples << std::endl;
     if (outSamples <= 0) {
-      throw std::runtime_error("error: outSamples=" + outSamples);
+      //throw std::runtime_error("error: outSamples=" + outSamples);
     }
 
     int outDataSize = av_samples_get_buffer_size(NULL, out.channels, outSamples,
                                                  out.format, 1);
 
     if (outDataSize <= 0) {
-      throw std::runtime_error("error: outDataSize=" + outDataSize);
+      //throw std::runtime_error("error: outDataSize=" + outDataSize);
     }
 
     return {outSamples, outDataSize};
