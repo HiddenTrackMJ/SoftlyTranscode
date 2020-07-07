@@ -8,6 +8,7 @@
 #include "FFmpegDecoder.h"
 #include "fdk_demo.hpp"
 #include "muxer.h"
+#include "mixer.h"
 
 #ifdef _WIN32
 #include <direct.h>
@@ -30,10 +31,15 @@ extern int decode_test(std::string input, std::string output);
 extern int encode_test(std::string input, std::string output);
 
 
-int mainxxx(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");
+
+  Mixer mixer;
+  //mixer.mix_test();
+  mixer.mix("D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac", "./hls/master.m3u8");
+  return 1000;
 
 //  std::string s = "hello1";
 //

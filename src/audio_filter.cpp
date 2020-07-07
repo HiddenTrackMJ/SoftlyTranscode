@@ -339,7 +339,7 @@ static void print_frame(const AVFrame *frame)
 #endif
 
 #undef main
-int main(int argc, char **argv) {
+int maina(int argc, char **argv) {
   int ret;
   AVFrame *frame = av_frame_alloc();
   AVFrame *filt_frame = av_frame_alloc();

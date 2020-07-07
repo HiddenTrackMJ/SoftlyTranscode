@@ -93,7 +93,7 @@ endif()
 aux_source_directory(./src CPP_LIST)
 
 add_executable (${PROJECT_NAME} 
- #       ${CPP_LIST}
+        ${CPP_LIST}
  #      "src/main.cpp" 
  #     "src/FFmpegDecoder.cpp"
  #       "src/remuxing.cpp" 
@@ -110,10 +110,11 @@ add_executable (${PROJECT_NAME}
  #        "src/muxing.cpp" 
  #        "src/dash_encoder.cpp" 
  #        "src/muxer.cpp" 
-          "src/audio_avfilter.cpp"
-          "include/FFmpegUtil.h"
+ #         "src/audio_avfilter.cpp"
+ #          "include/FFmpegUtil.h"
  #         "src/audio_filter.cpp"
- )
+ #           "src/mixer.cpp"
+  )
 
 
 target_include_directories(${PROJECT_NAME}
