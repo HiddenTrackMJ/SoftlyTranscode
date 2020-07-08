@@ -459,128 +459,348 @@ end:
   return ret;
 }
 
+//int Mixer::InitFilter(const char *filter_desc) {
+//  char args_spk[512];
+//  char *pad_name_spk = "in0";
+//  char args_mic[512];
+//  char *pad_name_mic = "in1";
+//
+//  const AVFilter *filter_src_spk = avfilter_get_by_name("abuffer");
+//  const AVFilter *filter_src_mic = avfilter_get_by_name("abuffer");
+//  const AVFilter *filter_sink = avfilter_get_by_name("abuffersink");
+//  AVFilterInOut *filter_in_1 = avfilter_inout_alloc();
+//  AVFilterInOut *filter_in_2 = avfilter_inout_alloc();
+//  AVFilterInOut *filter_out = avfilter_inout_alloc();
+//  AVRational time_base =
+//      filter.fmt_ctx->streams[filter.audio_stream_index]->time_base;
+//  //filter.dec_ctx->time_base;
+//  filter.filter_graph = avfilter_graph_alloc();
+//
+//  sprintf_s(
+//      args_spk, sizeof(args_spk),
+//      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%I64x",
+//      filter.dec_ctx->time_base.num, filter.dec_ctx->time_base.den,
+//      filter.dec_ctx->sample_rate,
+//      av_get_sample_fmt_name(filter.dec_ctx->sample_fmt),
+//      filter.dec_ctx->channel_layout);
+//
+//  sprintf_s(
+//      args_mic, sizeof(args_mic),
+//      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%I64x",
+//      filter._dec_ctx->time_base.num, filter._dec_ctx->time_base.den,
+//      filter._dec_ctx->sample_rate,
+//      av_get_sample_fmt_name(filter._dec_ctx->sample_fmt),
+//      filter._dec_ctx->channel_layout);
+//
+//  int ret = 0;
+//  ret =
+//      avfilter_graph_create_filter(&filter.buffersrc_ctx, filter_src_spk,
+//                                     pad_name_spk, args_spk, NULL,
+//                                     filter.filter_graph);
+//  if (ret < 0) {
+//    printf("Filter: failed to call avfilter_graph_create_filter -- src spk\n");
+//    return -1;
+//  }
+//  ret =
+//      avfilter_graph_create_filter(&filter._buffersrc_ctx, filter_src_mic,
+//                                     pad_name_mic, args_mic, NULL,
+//                                     filter.filter_graph);
+//  if (ret < 0) {
+//    printf("Filter: failed to call avfilter_graph_create_filter -- src mic\n");
+//    return -1;
+//  }
+//
+//  ret = avfilter_graph_create_filter(&filter.buffersink_ctx, filter_sink, "out",
+//                                     NULL, NULL, filter.filter_graph);
+//  if (ret < 0) {
+//    printf("Filter: failed to call avfilter_graph_create_filter -- sink\n");
+//    return -1;
+//  }
+//  AVCodecContext *encodec_ctx = filter.dec_ctx;
+//  ret = av_opt_set_bin(filter.buffersink_ctx, "sample_fmts",
+//                       (uint8_t *)&encodec_ctx->sample_fmt,
+//                       sizeof(encodec_ctx->sample_fmt), AV_OPT_SEARCH_CHILDREN);
+//  if (ret < 0) {
+//    printf("Filter: failed to call av_opt_set_bin -- sample_fmts\n");
+//    return -1;
+//  }
+//  ret = av_opt_set_bin(filter.buffersink_ctx, "channel_layouts",
+//                       (uint8_t *)&encodec_ctx->channel_layout,
+//                       sizeof(encodec_ctx->channel_layout),
+//                       AV_OPT_SEARCH_CHILDREN);
+//  if (ret < 0) {
+//    printf("Filter: failed to call av_opt_set_bin -- channel_layouts\n");
+//    return -1;
+//  }
+//  ret = av_opt_set_bin(filter.buffersink_ctx, "sample_rates",
+//                     (uint8_t *)&encodec_ctx->sample_rate,
+//      sizeof(encodec_ctx->sample_rate), AV_OPT_SEARCH_CHILDREN);
+//  if (ret < 0) {
+//    printf("Filter: failed to call av_opt_set_bin -- sample_rates\n");
+//    return -1;
+//  }
+//
+//  filter_in_1->name = av_strdup(pad_name_spk);
+//  filter_in_1->filter_ctx = filter.buffersrc_ctx;
+//  filter_in_1->pad_idx = 0;
+//  filter_in_1->next = filter_in_2;
+//
+//  filter_in_2->name = av_strdup(pad_name_mic);
+//  filter_in_2->filter_ctx = filter._buffersrc_ctx;
+//  filter_in_2->pad_idx = 0;
+//  filter_in_2->next = NULL;
+//
+//  filter_out->name = av_strdup("out");
+//  filter_out->filter_ctx = filter.buffersink_ctx;
+//  filter_out->pad_idx = 0;
+//  filter_out->next = NULL;
+//
+//  AVFilterInOut *filter_inputs[2];
+//  filter_inputs[0] = filter_in_1;
+//  filter_inputs[1] = filter_in_2;
+//
+//  ret = avfilter_graph_parse_ptr(filter.filter_graph, filter.filter_desc,
+//                                 &filter_out,
+//                                 filter_inputs, NULL);
+//  if (ret < 0) {
+//    av_log(NULL, AV_LOG_ERROR, "parse ptr fail, ret: %d\n", ret);
+//    return -1;
+//  }
+//
+//  ret = avfilter_graph_config(filter.filter_graph, NULL);
+//  if (ret < 0) {
+//    av_log(NULL, AV_LOG_ERROR, "config graph fail, ret: %d\n", ret);
+//    return -1;
+//  }
+//
+//  avfilter_inout_free(&filter_out);
+//
+//  // av_free(filter_src_spk);
+//  // av_free(filter_src_mic);
+//
+//  avfilter_inout_free(filter_inputs);
+//  // av_free(filter_inputs);
+//
+//  char *temp = avfilter_graph_dump(filter.filter_graph, NULL);
+//  printf("filter init, %s\n", temp);
+//
+//  return 0;
+//}
+
 int Mixer::InitFilter(const char *filter_desc) {
-  char args_spk[512];
-  char *pad_name_spk = "in0";
-  char args_mic[512];
-  char *pad_name_mic = "in1";
-
-  const AVFilter *filter_src_spk = avfilter_get_by_name("abuffer");
-  const AVFilter *filter_src_mic = avfilter_get_by_name("abuffer");
-  const AVFilter *filter_sink = avfilter_get_by_name("abuffersink");
-  AVFilterInOut *filter_in_1 = avfilter_inout_alloc();
-  AVFilterInOut *filter_in_2 = avfilter_inout_alloc();
-  AVFilterInOut *filter_out = avfilter_inout_alloc();
-  AVRational time_base =
-      filter.fmt_ctx->streams[filter.audio_stream_index]->time_base;
-  //filter.dec_ctx->time_base;
-  filter.filter_graph = avfilter_graph_alloc();
-
-  sprintf_s(
-      args_spk, sizeof(args_spk),
-      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%I64x",
-      time_base.num, time_base.den, filter.dec_ctx->sample_rate,
-      av_get_sample_fmt_name(filter.dec_ctx->sample_fmt),
-      filter.dec_ctx->channel_layout);
-
-  sprintf_s(
-      args_mic, sizeof(args_mic),
-      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%I64x",
-      time_base.num, time_base.den, filter.dec_ctx->sample_rate,
-      av_get_sample_fmt_name(filter.dec_ctx->sample_fmt),
-      filter.dec_ctx->channel_layout);
-
+  char args1[512];
+  char args2[512];
   int ret = 0;
-  ret =
-      avfilter_graph_create_filter(&filter.buffersrc_ctx, filter_src_spk,
-                                     pad_name_spk, args_spk, NULL,
-                                     filter.filter_graph);
-  if (ret < 0) {
-    printf("Filter: failed to call avfilter_graph_create_filter -- src spk\n");
-    return -1;
-  }
-  ret =
-      avfilter_graph_create_filter(&filter._buffersrc_ctx, filter_src_mic,
-                                     pad_name_mic, args_mic, NULL,
-                                     filter.filter_graph);
-  if (ret < 0) {
-    printf("Filter: failed to call avfilter_graph_create_filter -- src mic\n");
-    return -1;
-  }
+  const AVFilter *abuffersrc1 = avfilter_get_by_name("abuffer");
+  const AVFilter *abuffersrc2 = avfilter_get_by_name("abuffer");
+  const AVFilter *abuffersink = avfilter_get_by_name("abuffersink");
 
-  ret = avfilter_graph_create_filter(&filter.buffersink_ctx, filter_sink, "out",
-                                     NULL, NULL, filter.filter_graph);
-  if (ret < 0) {
-    printf("Filter: failed to call avfilter_graph_create_filter -- sink\n");
-    return -1;
-  }
-  AVCodecContext *encodec_ctx = filter.dec_ctx;
-  ret = av_opt_set_bin(filter.buffersink_ctx, "sample_fmts",
-                       (uint8_t *)&encodec_ctx->sample_fmt,
-                       sizeof(encodec_ctx->sample_fmt), AV_OPT_SEARCH_CHILDREN);
-  if (ret < 0) {
-    printf("Filter: failed to call av_opt_set_bin -- sample_fmts\n");
-    return -1;
-  }
-  ret = av_opt_set_bin(filter.buffersink_ctx, "channel_layouts",
-                       (uint8_t *)&encodec_ctx->channel_layout,
-                       sizeof(encodec_ctx->channel_layout),
-                       AV_OPT_SEARCH_CHILDREN);
-  if (ret < 0) {
-    printf("Filter: failed to call av_opt_set_bin -- channel_layouts\n");
-    return -1;
-  }
-  ret = av_opt_set_bin(filter.buffersink_ctx, "sample_rates",
-                     (uint8_t *)&encodec_ctx->sample_rate,
-      sizeof(encodec_ctx->sample_rate), AV_OPT_SEARCH_CHILDREN);
-  if (ret < 0) {
-    printf("Filter: failed to call av_opt_set_bin -- sample_rates\n");
-    return -1;
+  AVFilterInOut *outputs1 = avfilter_inout_alloc();
+  AVFilterInOut *outputs2 = avfilter_inout_alloc();
+  AVFilterInOut *inputs = avfilter_inout_alloc();
+
+  static const enum AVSampleFormat out_sample_fmts[] = {
+      filter.dec_ctx->sample_fmt, (enum AVSampleFormat) - 1};  
+      // AV_SAMPLE_FMT_S16,   (enum AVSampleFormat) - 1}; 
+  static const int64_t out_channel_layouts[] =
+      {filter.dec_ctx->channel_layout, -1};
+      //{AV_CH_LAYOUT_MONO, -1};
+  static const int out_sample_rates[] = {filter.dec_ctx->sample_rate, -1};
+  const AVFilterLink *outlink;
+
+  AVRational time_base_1 =
+      filter.fmt_ctx->streams[filter.audio_stream_index]->time_base;
+  AVRational time_base_2 =
+      filter._fmt_ctx->streams[filter._audio_stream_index]->time_base;
+
+  filter.filter_graph = avfilter_graph_alloc();
+  if (!outputs1 || !inputs || !filter.filter_graph) {
+    ret = AVERROR(ENOMEM);
+    goto end;
   }
 
-  filter_in_1->name = av_strdup(pad_name_spk);
-  filter_in_1->filter_ctx = filter.buffersrc_ctx;
-  filter_in_1->pad_idx = 0;
-  filter_in_1->next = filter_in_2;
+    std::cout << "sample_fmt: "
+            << av_get_sample_fmt_name(filter.dec_ctx->sample_fmt)
+            << "channel_layout: " << filter.dec_ctx->channel_layout
+            << "sample_rates: " << out_sample_rates[0]
+            << "bits_per_raw_sample: " << filter.dec_ctx->bits_per_raw_sample
+            << std::endl;
 
-  filter_in_2->name = av_strdup(pad_name_mic);
-  filter_in_2->filter_ctx = filter._buffersrc_ctx;
-  filter_in_2->pad_idx = 0;
-  filter_in_2->next = NULL;
+      std::cout << "sample_fmt2: "
+              << av_get_sample_fmt_name(filter._dec_ctx->sample_fmt)
+              << "channel_layout2: " << filter._dec_ctx->channel_layout
+              << "sample_rates2: " << out_sample_rates[0]
+              << "bits_per_raw_sample2: " << filter._dec_ctx->bits_per_raw_sample
+              << std::endl;
 
-  filter_out->name = av_strdup("out");
-  filter_out->filter_ctx = filter.buffersink_ctx;
-  filter_out->pad_idx = 0;
-  filter_out->next = NULL;
-
-  AVFilterInOut *filter_inputs[2];
-  filter_inputs[0] = filter_in_1;
-  filter_inputs[1] = filter_in_2;
-
-  ret = avfilter_graph_parse_ptr(filter.filter_graph, filter_desc,
-                                 &filter_out,
-                                 filter_inputs, NULL);
+  /* buffer audio source: the decoded frames from the decoder will be inserted
+   * here. */
+  if (!filter.dec_ctx->channel_layout)
+    filter.dec_ctx->channel_layout =
+        av_get_default_channel_layout(filter.dec_ctx->channels);
+  snprintf(
+      args1, sizeof(args1),
+      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%" PRIx64,
+      time_base_1.num, time_base_1.den, filter.dec_ctx->sample_rate,
+      av_get_sample_fmt_name(filter.dec_ctx->sample_fmt), filter.dec_ctx->channel_layout);
+  ret = avfilter_graph_create_filter(&filter.buffersrc_ctx, abuffersrc1, "in0", args1, NULL, filter.filter_graph);
   if (ret < 0) {
-    printf("Filter: failed to call avfilter_graph_parse_ptr\n");
-    return -1;
+    av_log(NULL, AV_LOG_ERROR, "Cannot create audio buffer source\n");
+    goto end;
   }
 
-  ret = avfilter_graph_config(filter.filter_graph, NULL);
+
+  /* buffer audio source: the decoded frames from the decoder will be inserted
+   * here. */
+  if (!filter._dec_ctx->channel_layout)
+    filter._dec_ctx->channel_layout =
+        av_get_default_channel_layout(filter._dec_ctx->channels);
+  snprintf(
+      args2, sizeof(args2),
+      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%" PRIx64,
+      time_base_2.num, time_base_2.den, filter._dec_ctx->sample_rate,
+      av_get_sample_fmt_name(filter._dec_ctx->sample_fmt), filter._dec_ctx->channel_layout);
+  ret = avfilter_graph_create_filter(&filter._buffersrc_ctx, abuffersrc1, "in1", args2, NULL, filter.filter_graph);
   if (ret < 0) {
-    printf("Filter: failed to call avfilter_graph_config\n");
-    return -1;
+    av_log(NULL, AV_LOG_ERROR, "Cannot create audio buffer source\n");
+    goto end;
+  }
+  /* buffer audio sink: to terminate the filter chain. */
+  ret = avfilter_graph_create_filter(&filter.buffersink_ctx,
+                                     abuffersink, "out", NULL, NULL, filter.filter_graph);
+  if (ret < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Cannot create audio buffer sink\n");
+    goto end;
   }
 
-  avfilter_inout_free(&filter_out);
+  ret = av_opt_set_int_list(filter.buffersink_ctx, "sample_fmts",
+                            out_sample_fmts, -1,
+                            AV_OPT_SEARCH_CHILDREN);
+  if (ret < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Cannot set output sample format\n");
+    goto end;
+  }
 
-  // av_free(filter_src_spk);
-  // av_free(filter_src_mic);
+  ret = av_opt_set_int_list(filter.buffersink_ctx, "channel_layouts",
+                            out_channel_layouts, -1, AV_OPT_SEARCH_CHILDREN);
+  if (ret < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Cannot set output channel layout\n");
+    goto end;
+  }
 
-  avfilter_inout_free(filter_inputs);
-  // av_free(filter_inputs);
+  ret = av_opt_set_int_list(filter.buffersink_ctx, "sample_rates",
+                            out_sample_rates,
+                            -1, AV_OPT_SEARCH_CHILDREN);
+  if (ret < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Cannot set output sample rate\n");
+    goto end;
+  }
 
-  char *temp = avfilter_graph_dump(filter.filter_graph, NULL);
-  printf("filter init, %s\n", temp);
+  /*
+   * Set the endpoints for the filter graph. The filter_graph will
+   * be linked to the graph described by filters_descr.
+   */
+
+  /*
+   * The buffer source output must be connected to the input pad of
+   * the first filter described by filters_descr; since the first
+   * filter input label is not specified, it is set to "in" by
+   * default.
+   */
+  outputs1->name = av_strdup("in0");
+  outputs1->filter_ctx = filter.buffersrc_ctx;
+  outputs1->pad_idx = 0;
+  outputs1->next = outputs2;
+
+  outputs2->name = av_strdup("in1");
+  outputs2->filter_ctx = filter._buffersrc_ctx;
+  outputs2->pad_idx = 0;
+  outputs2->next = NULL;
+
+  /*
+   * The buffer sink input must be connected to the output pad of
+   * the last filter described by filters_descr; since the last
+   * filter output label is not specified, it is set to "out" by
+   * default.
+   */
+  inputs->name = av_strdup("out");
+  inputs->filter_ctx = filter.buffersink_ctx;
+  inputs->pad_idx = 0;
+  inputs->next = NULL;
+
+  AVFilterInOut *filter_outputs[2];
+  filter_outputs[0] = outputs1;
+  filter_outputs[1] = outputs2;
+
+
+  if ((ret = avfilter_graph_parse_ptr(filter.filter_graph, filter.filter_desc,
+                                      &inputs, filter_outputs, NULL)) <
+      0)  // filter_outputs
+  {
+    av_log(NULL, AV_LOG_ERROR, "parse ptr fail, ret: %d\n", ret);
+    goto end;
+  }
+
+  if ((ret = avfilter_graph_config(filter.filter_graph, NULL)) < 0) {
+    av_log(NULL, AV_LOG_ERROR, "config graph fail, ret: %d\n", ret);
+    goto end;
+  }
+
+  /* Print summary of the sink buffer
+   * Note: args buffer is reused to store channel layout string */
+  outlink = filter.buffersink_ctx->inputs[0];
+  av_get_channel_layout_string(args1, sizeof(args1), -1,
+                               outlink->channel_layout);
+  av_log(NULL, AV_LOG_INFO, "Output: srate:%dHz fmt:%s chlayout:%s\n",
+         (int)outlink->sample_rate,
+         (char *)av_x_if_null(
+             av_get_sample_fmt_name((enum AVSampleFormat)outlink->format), "?"),
+         args1);
+
+end:
+  avfilter_inout_free(&inputs);
+  avfilter_inout_free(filter_outputs);
+
+  return ret;
+}
+
+int Mixer::_open_input_file(const char *filename) {
+  int ret;
+  AVCodec *dec;
+
+  I_LOG("filename: {}", filename);
+
+  if ((ret = avformat_open_input(&(filter._fmt_ctx), filename, NULL, NULL)) < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");
+    return ret;
+  }
+
+  if ((ret = avformat_find_stream_info(filter._fmt_ctx, NULL)) < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Cannot find stream information\n");
+    return ret;
+  }
+
+  /* select the audio stream */
+  ret = av_find_best_stream(filter._fmt_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, &dec, 0);
+  if (ret < 0) {
+    av_log(NULL, AV_LOG_ERROR,
+           "Cannot find an audio stream in the input file\n");
+    return ret;
+  }
+  filter._audio_stream_index = ret;
+
+  /* create decoding context */
+  filter._dec_ctx = avcodec_alloc_context3(dec);
+  if (!filter._dec_ctx) return AVERROR(ENOMEM);
+  avcodec_parameters_to_context(
+      filter._dec_ctx,
+      filter._fmt_ctx->streams[filter._audio_stream_index]->codecpar);
+
+  /* init the audio decoder */
+  if ((ret = avcodec_open2(filter._dec_ctx, dec, NULL)) < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Cannot open audio decoder\n");
+    return ret;
+  }
 
   return 0;
 }
@@ -591,7 +811,8 @@ int Mixer::open_input_file(const char *filename) {
 
   I_LOG("filename: {}", filename);
 
-  if ((ret = avformat_open_input(&(filter.fmt_ctx), filename, NULL, NULL)) < 0) {
+  if ((ret = avformat_open_input(&(filter.fmt_ctx), filename, NULL, NULL)) <
+      0) {
     av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");
     return ret;
   }
@@ -602,7 +823,8 @@ int Mixer::open_input_file(const char *filename) {
   }
 
   /* select the audio stream */
-  ret = av_find_best_stream(filter.fmt_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, &dec, 0);
+  ret =
+      av_find_best_stream(filter.fmt_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, &dec, 0);
   if (ret < 0) {
     av_log(NULL, AV_LOG_ERROR,
            "Cannot find an audio stream in the input file\n");
@@ -645,7 +867,7 @@ int Mixer::mix_test() {
   "D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
 
   if ((ret = open_input_file(file_name.c_str())) < 0) return -1; 
-  if ((ret = init_filters(filter.filter_descr)) < 0) return -1;  
+  if ((ret = init_filters(filter.filter_desc)) < 0) return -1;  
   if ((ret = open_output_file(dst.c_str())) < 0) goto end;
 
   /* read all packets */
@@ -730,7 +952,7 @@ int Mixer::mix(std::string input_aac, std::string dst) {
 
   if ((ret = open_input_file(input_aac.c_str())) < 0) return -1; 
   if ((ret = open_output_file(dst.c_str())) < 0) goto end;
-  if ((ret = init_filters(filter.filter_descr)) < 0) return -1;  
+  if ((ret = init_filters(filter.filter_desc)) < 0) return -1;  
 
   /* read all packets */
   int count = 0;
@@ -965,12 +1187,16 @@ Exit:
 }
 
 int Mixer::recv_aac_thread(
-     std::string input_aac, pkt_list_info* pkt_list_ctx
+     std::string input_aac, pkt_list_info* pkt_list_ctx, int index
     ) {
   int ret;
-
-  if ((ret = open_input_file(input_aac.c_str())) < 0) return -1;
-  if ((ret = InitFilter(filter.filter_descr)) < 0) return -1;
+  if (index == 1) {
+    if ((ret = open_input_file(input_aac.c_str())) < 0) return -1;
+  } else {
+    if ((ret = _open_input_file(input_aac.c_str())) < 0) return -1;
+  }
+  
+  if ((ret = InitFilter(filter.filter_desc)) < 0) return -1;
 
   /* read all packets */
   int count = 0;
@@ -1001,16 +1227,20 @@ int Mixer::recv_aac_thread(
       break;
     }
 
-    // I_LOG("frmae len: {}", adtsHeader.aacFrameLength);
+     
 
     len = fread(aac_frame + 7, 1, adtsHeader.aacFrameLength - 7, aac);
 
-    buff_c = new uint8_t[len + 1]();
-    memcpy(buff_c, &aac_frame[0], len);
+    //I_LOG("frmae len: {}, size: {}", adtsHeader.aacFrameLength, len);
+
+    buff_c = new uint8_t[adtsHeader.aacFrameLength + 1]();
+    memcpy(buff_c, &aac_frame[0], adtsHeader.aacFrameLength);
     std::unique_ptr<uint8_t> pkt{buff_c};
 
     (*pkt_list_ctx).pkt_list_mu->lock();
-    (*pkt_list_ctx).pkt_list.push_back(std::make_pair(std::move(pkt), len));
+    (*pkt_list_ctx)
+        .pkt_list.push_back(
+            std::make_pair(std::move(pkt), adtsHeader.aacFrameLength));
     (*pkt_list_ctx).pkt_list_mu->unlock();
     (*pkt_list_ctx).pkt_list_cv->notify_one();
 
@@ -1025,6 +1255,7 @@ end:
   // if (ret < 0)
   // av_log(NULL, AV_LOG_ERROR, "Error occurred: %s\n", av_err2str(ret));
   // //av_err2str(ret));
+  stop = 1;
   return ret ? 1 : 0;
 }
 
@@ -1052,19 +1283,19 @@ int Mixer::process_thread(std::string dst_file) {
       return !pkt_list_ctx1.pkt_list.empty() ||
              !pkt_list_ctx2.pkt_list.empty() || stop;
     });
-    if (stop && pkt_list_ctx1.pkt_list.empty() &&
-        pkt_list_ctx2.pkt_list.empty())
+    if (stop &&
+        (pkt_list_ctx1.pkt_list.empty() || pkt_list_ctx2.pkt_list.empty()))
       break;
     if (!pkt_list_ctx1.pkt_list.empty()) {
       uint8_t *pkt = pkt_list_ctx1.pkt_list.front().first.release();
       int size = pkt_list_ctx1.pkt_list.front().second;
       pkt_list_ctx1.pkt_list.pop_front();
-      I_LOG("size:{}", size);
+     
       ff_decoder.InputData((unsigned char *)&pkt[0], size);
       frame = ff_decoder.getFrame();
 
-      std::cout << "nb1: " << frame->nb_samples << std::endl;
-      //frame->pts = av_frame_get_best_effort_timestamp(frame);
+      //std::cout << "nb1: " << frame->nb_samples << std::endl;
+      frame->pts = av_frame_get_best_effort_timestamp(frame);
 
        /* push the audio data from decoded frame into the filtergraph */
     } else {
@@ -1073,7 +1304,7 @@ int Mixer::process_thread(std::string dst_file) {
 
     if (av_buffersrc_add_frame_flags(filter.buffersrc_ctx, frame,
                                      AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
-      av_log(NULL, AV_LOG_ERROR, "Error while feeding the audio filtergraph\n");
+      av_log(NULL, AV_LOG_ERROR, "Error while feeding the audio filtergraph1\n");
       break;
     }
    
@@ -1084,19 +1315,19 @@ int Mixer::process_thread(std::string dst_file) {
       return !pkt_list_ctx1.pkt_list.empty() ||
              !pkt_list_ctx2.pkt_list.empty() || stop;
     });
-    if (stop && pkt_list_ctx1.pkt_list.empty() &&
-        pkt_list_ctx2.pkt_list.empty())
+    if (stop && (pkt_list_ctx1.pkt_list.empty() ||
+        pkt_list_ctx2.pkt_list.empty()))
       break;
     if (!pkt_list_ctx2.pkt_list.empty()) {
       uint8_t *pkt = pkt_list_ctx2.pkt_list.front().first.release();
       int size = pkt_list_ctx2.pkt_list.front().second;
       pkt_list_ctx2.pkt_list.pop_front();
-      I_LOG("size:{}", size);
+
       ff_decoder.InputData((unsigned char *)&pkt[0], size);
       _frame = ff_decoder.getFrame();
 
-       std::cout << "nb2: " << frame->nb_samples << std::endl;
-      //_frame->pts = av_frame_get_best_effort_timestamp(_frame);
+       //std::cout << "nb2: " << frame->nb_samples << std::endl;
+      _frame->pts = av_frame_get_best_effort_timestamp(_frame);
 
       /* push the audio data from decoded frame into the filtergraph */
       
@@ -1105,7 +1336,7 @@ int Mixer::process_thread(std::string dst_file) {
     }
     if (av_buffersrc_add_frame_flags(filter._buffersrc_ctx, _frame,
                                      AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
-      av_log(NULL, AV_LOG_ERROR, "Error while feeding the audio filtergraph\n");
+      av_log(NULL, AV_LOG_ERROR, "Error while feeding the audio filtergraph2\n");
       break;
     }
 
@@ -1119,11 +1350,11 @@ int Mixer::process_thread(std::string dst_file) {
       if (ret < 0) return -1;
       frame_out->pts = frame->pkt_pts;
       filt_frame->pts = frame->pkt_pts;
-      if (0 != TransSample(filt_frame, frame_out)) {
-        av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
-      }
+      //if (0 != TransSample(filt_frame, frame_out)) {
+      //  av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
+      //}
 
-      encode_write_frame(frame_out, stream_index);
+      encode_write_frame(filt_frame, stream_index);
       av_frame_unref(filt_frame);
     }
     av_frame_unref(frame);
@@ -1139,19 +1370,20 @@ int Mixer::open_thread(int port, std::string dst) {
   std::string filename1 =
       "D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
   std::string filename2 =
+      //"D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
       "D:/Study/Scala/VSWS/transcode/out/build/1.aac";
   try {
     std::thread recv_thread1{std::mem_fn(&Mixer::recv_aac_thread),
                              std::ref(*this), filename1,
-                             &pkt_list_ctx1};
+                             &pkt_list_ctx1, 1};
 
     std::thread recv_thread2{std::mem_fn(&Mixer::recv_aac_thread),
                              std::ref(*this),  filename2,
-                             &pkt_list_ctx2};
+                             &pkt_list_ctx2, 2};
 
-    recv_thread1.join();
-    recv_thread2.join();
-    stop = 1;
+    recv_thread1.detach();
+    recv_thread2.detach();
+    //stop = 1;
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::thread mix_thread{std::mem_fn(&Mixer::process_thread), std::ref(*this),
                            dst};

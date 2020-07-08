@@ -65,7 +65,7 @@ int FFmpegDecoder::InputData(unsigned char *inputData, int inputLen) {
         inputData += ret;
         inputLen -= ret;
 
-        I_LOG("ret: {}, pkt size: {}, data: {}, dts {}", ret, pkt->size, pkt->pts, pkt->dts);
+        //I_LOG("ret: {}, pkt size: {}, data: {}, dts {}", ret, pkt->size, pkt->pts, pkt->dts);
         if (pkt->size) {
 
             error = decode(pkt);
@@ -100,7 +100,7 @@ int FFmpegDecoder::decode(AVPacket *mpkt) {
         }
 
         //frame->pts = ts_gen.fetch_add(23);
-        I_LOG("ret: {}, pkt size: {}, dts {}", ret, frame->pkt_size, frame->pts);
+        //I_LOG("ret: {}, pkt size: {}, dts {}", ret, frame->pkt_size, frame->pts);
         out_frame = frame;
         fflush(stdout);
 

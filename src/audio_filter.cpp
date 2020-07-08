@@ -147,9 +147,12 @@ static int init_filters(const char* filters_descr) {
   AVFilterInOut* outputs2 = avfilter_inout_alloc();
   AVFilterInOut* inputs = avfilter_inout_alloc();
 
-  static const enum AVSampleFormat out_sample_fmts[] = {AV_SAMPLE_FMT_S16, (enum AVSampleFormat)-1};
-  static const int64_t out_channel_layouts[] = {AV_CH_LAYOUT_MONO, -1};
-  static const int out_sample_rates[] = {8000, -1};
+  static const enum AVSampleFormat out_sample_fmts[] = {
+      dec_ctx1->sample_fmt,
+      (enum AVSampleFormat) - 1};  //{AV_SAMPLE_FMT_S16}
+  static const int64_t out_channel_layouts[] = {dec_ctx1->channel_layout,
+                                                -1};  //{AV_CH_LAYOUT_MONO, -1}
+  static const int out_sample_rates[] = {dec_ctx1->sample_rate, -1};
   const AVFilterLink* outlink;
 
   AVRational time_base_1 = fmt_ctx1->streams[audio_stream_index_1]->time_base;
@@ -341,7 +344,7 @@ static void print_frame(const AVFrame* frame)
 #endif
 
 #undef main
-int main(int argc, char** argv) {
+int mainsss(int argc, char** argv) {
   int ret;
   AVFrame* frame = av_frame_alloc();
   AVFrame* filt_frame = av_frame_alloc();
@@ -402,14 +405,14 @@ int main(int argc, char** argv) {
       packet.data += ret;
 
       if (got_frame) {
-        av_log(NULL, AV_LOG_ERROR, "push frame\n");
+        //av_log(NULL, AV_LOG_ERROR, "push frame\n");
         /* push the audio data from decoded frame into the filtergraph */
         if (av_buffersrc_add_frame_flags(buffersrc_ctx1, frame, 0) < 0) {
           av_log(NULL, AV_LOG_ERROR,
                  "Error while feeding the audio filtergraph\n");
           break;
         }
-        av_log(NULL, AV_LOG_ERROR, "pull frame\n");
+        //av_log(NULL, AV_LOG_ERROR, "pull frame\n");
       }
 
       if (packet.size <= 0) av_packet_unref(&packet0);
@@ -434,14 +437,14 @@ int main(int argc, char** argv) {
       _packet.data += ret;
 
       if (got_frame) {
-        av_log(NULL, AV_LOG_ERROR, "push frame\n");
+        //av_log(NULL, AV_LOG_ERROR, "push frame\n");
         /* push the audio data from decoded frame into the filtergraph */
         if (av_buffersrc_add_frame_flags(buffersrc_ctx2, frame, 0) < 0) {
           av_log(NULL, AV_LOG_ERROR,
                  "Error while feeding the audio filtergraph\n");
           break;
         }
-        av_log(NULL, AV_LOG_ERROR, "pull frame\n");
+        //av_log(NULL, AV_LOG_ERROR, "pull frame\n");
       }
 
       if (_packet.size <= 0) av_packet_unref(&_packet0);

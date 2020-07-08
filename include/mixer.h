@@ -51,7 +51,7 @@ struct codec_info {
 class Mixer {
  public:
   struct filter_info {
-    char *filter_descr = "[in0][in1]amix=inputs=2[out]"; 
+    char *filter_desc = "[in0][in1]amix=inputs=2[out]"; 
         //"aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
 
     const char *player = "ffplay -f s16le -ar 8000 -ac 1 -";
@@ -59,6 +59,10 @@ class Mixer {
     AVFormatContext *fmt_ctx = nullptr;
 
     AVCodecContext *dec_ctx;
+
+    AVFormatContext *_fmt_ctx = nullptr;
+
+    AVCodecContext *_dec_ctx;
 
     AVFilterContext *buffersink_ctx;
 
@@ -69,6 +73,8 @@ class Mixer {
     AVFilterGraph *filter_graph;
 
     int audio_stream_index = -1;
+
+    int _audio_stream_index = -1;
   };
 
   struct pkt_list_info {
@@ -125,6 +131,8 @@ class Mixer {
 
   int open_input_file(const char *filename);
 
+  int _open_input_file(const char *filename);
+
   int open_output_file(const char *filename);
 
   int init_filters(const char *filters_descr);
@@ -139,7 +147,8 @@ class Mixer {
 
   int recv_aac_mix(int port, std::string input_aac, std::string dst);
 
-  int recv_aac_thread(std::string input_aac, pkt_list_info* pkt_list_ctx);
+  int recv_aac_thread(std::string input_aac, pkt_list_info *pkt_list_ctx,
+                      int index);
 
   int process_thread(std::string dst_file);
 

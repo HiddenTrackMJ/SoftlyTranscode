@@ -50,7 +50,7 @@
 //#define BUF_SIZE_1K 1024000
 //
 //
-//static const char *filter_descr =
+//static const char *filter_desc =
 //    "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
 //static const char *player = "ffplay -f s16le -ar 8000 -ac 1 -";
 //
@@ -533,7 +533,7 @@
 //
 //
 //  if ((ret = open_input_file(file_name.c_str())) < 0) return -1;  // goto end;
-//  if ((ret = init_filters(filter_descr)) < 0) return -1;          // goto end;
+//  if ((ret = init_filters(filter_desc)) < 0) return -1;          // goto end;
 //
 //    // sdl play audio
 //  FFmpegUtil::ffmpeg_util ffmpeg_ctx(file_name);
