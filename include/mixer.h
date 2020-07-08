@@ -51,8 +51,8 @@ struct codec_info {
 class Mixer {
  public:
   struct filter_info {
-    const char *filter_descr =
-        "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
+    char *filter_descr = "[in0][in1]amix=inputs=2[out]"; 
+        //"aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
 
     const char *player = "ffplay -f s16le -ar 8000 -ac 1 -";
 
@@ -64,9 +64,20 @@ class Mixer {
 
     AVFilterContext *buffersrc_ctx;
 
+    AVFilterContext *_buffersrc_ctx;
+
     AVFilterGraph *filter_graph;
 
     int audio_stream_index = -1;
+  };
+
+  struct pkt_list_info {
+    std::list<std::pair<std::unique_ptr<uint8_t>, int>> pkt_list{};
+
+    unique_ptr<std::mutex> pkt_list_mu = unique_ptr<std::mutex>(new std::mutex);
+
+    unique_ptr<std::condition_variable> pkt_list_cv =
+        unique_ptr<std::condition_variable>(new std::condition_variable);
   };
 
  private:
@@ -80,9 +91,13 @@ class Mixer {
 
   filter_info filter;
 
+  filter_info _filter;
+
   SwrContext *pSwrCtx;
 
   AVFrame *frame;
+
+  AVFrame *_frame;
 
   AVPacket packet;  
 
@@ -90,12 +105,9 @@ class Mixer {
 
   int pkt_count = 0;
 
-  std::list<std::pair<std::unique_ptr<uint8_t>, int>> pkt_list{};
+  pkt_list_info pkt_list_ctx1;
 
-  unique_ptr<std::mutex> pkt_list_mu = unique_ptr<std::mutex>(new std::mutex);
-
-  unique_ptr<std::condition_variable> pkt_list_cv =
-      unique_ptr<std::condition_variable>(new std::condition_variable);
+  pkt_list_info pkt_list_ctx2;
 
  public:
   Mixer();
@@ -117,6 +129,8 @@ class Mixer {
 
   int init_filters(const char *filters_descr);
 
+  int InitFilter(const char *filter_desc);
+
   int encode_write_frame(AVFrame *filt_frame, unsigned int stream_index);
 
   int flush_encoder(unsigned int stream_index);
@@ -125,7 +139,7 @@ class Mixer {
 
   int recv_aac_mix(int port, std::string input_aac, std::string dst);
 
-  int recv_aac_thread(int port);
+  int recv_aac_thread(std::string input_aac, pkt_list_info* pkt_list_ctx);
 
   int process_thread(std::string dst_file);
 

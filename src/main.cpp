@@ -31,14 +31,14 @@ extern int decode_test(std::string input, std::string output);
 extern int encode_test(std::string input, std::string output);
 
 
-int main(int argc, char *argv[]) {
+int main98489(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");
 
   Mixer mixer;
-  //mixer.mix_test();
-  mixer.mix("D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac", "./hls/master.m3u8");
+  //mixer.mix("D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac", "./hls/test.aac");
+  mixer.open_thread(8080, "./hls/mix.aac");
   return 1000;
 
 //  std::string s = "hello1";

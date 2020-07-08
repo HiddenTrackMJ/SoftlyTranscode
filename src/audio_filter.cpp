@@ -47,30 +47,29 @@ extern "C" {
 
 #define ENABLE_FILTERS 1
 
-static const char *filter_descr =
+static const char* filter_descr =
     "[in0][in1]amix=inputs=2[out]";  //"aresample=8000,aformat=sample_fmts=s16:channel_layouts=mono";
-static const char *player = "ffplay -f s16le -ar 8000 -ac 1 -";
+static const char* player = "ffplay -f s16le -ar 8000 -ac 1 -";
 
-static AVFormatContext *fmt_ctx1;
-static AVFormatContext *fmt_ctx2;
+static AVFormatContext* fmt_ctx1;
+static AVFormatContext* fmt_ctx2;
 
-static AVCodecContext *dec_ctx1;
-static AVCodecContext *dec_ctx2;
+static AVCodecContext* dec_ctx1;
+static AVCodecContext* dec_ctx2;
 
-AVFilterContext *buffersink_ctx;
-AVFilterContext *buffersrc_ctx1;
-AVFilterContext *buffersrc_ctx2;
+AVFilterContext* buffersink_ctx;
+AVFilterContext* buffersrc_ctx1;
+AVFilterContext* buffersrc_ctx2;
 
-AVFilterGraph *filter_graph;
+AVFilterGraph* filter_graph;
 static int audio_stream_index_1 = -1;
 static int audio_stream_index_2 = -1;
 
-void *wav = NULL;
-std::string output = "./test.wav";
+void* wav = NULL;
 
-static int open_input_file_1(const char *filename) {
+static int open_input_file_1(const char* filename) {
   int ret;
-  AVCodec *dec;
+  AVCodec* dec;
 
   if ((ret = avformat_open_input(&fmt_ctx1, filename, NULL, NULL)) < 0) {
     av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");
@@ -102,9 +101,9 @@ static int open_input_file_1(const char *filename) {
   return 0;
 }
 
-static int open_input_file_2(const char *filename) {
+static int open_input_file_2(const char* filename) {
   int ret;
-  AVCodec *dec;
+  AVCodec* dec;
 
   if ((ret = avformat_open_input(&fmt_ctx2, filename, NULL, NULL)) < 0) {
     av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");
@@ -136,22 +135,22 @@ static int open_input_file_2(const char *filename) {
   return 0;
 }
 
-static int init_filters(const char *filters_descr) {
+static int init_filters(const char* filters_descr) {
   char args1[512];
   char args2[512];
   int ret = 0;
-  const AVFilter *abuffersrc1 = avfilter_get_by_name("abuffer");
-  const AVFilter *abuffersrc2 = avfilter_get_by_name("abuffer");
-  const AVFilter *abuffersink = avfilter_get_by_name("abuffersink");
+  const AVFilter* abuffersrc1 = avfilter_get_by_name("abuffer");
+  const AVFilter* abuffersrc2 = avfilter_get_by_name("abuffer");
+  const AVFilter* abuffersink = avfilter_get_by_name("abuffersink");
 
-  AVFilterInOut *outputs1 = avfilter_inout_alloc();
-  AVFilterInOut *outputs2 = avfilter_inout_alloc();
-  AVFilterInOut *inputs = avfilter_inout_alloc();
+  AVFilterInOut* outputs1 = avfilter_inout_alloc();
+  AVFilterInOut* outputs2 = avfilter_inout_alloc();
+  AVFilterInOut* inputs = avfilter_inout_alloc();
 
-  static const enum AVSampleFormat out_sample_fmts[] = {dec_ctx1->sample_fmt, (enum AVSampleFormat)-1};
-  static const int64_t out_channel_layouts[] = {dec_ctx1->channel_layout, -1};
+  static const enum AVSampleFormat out_sample_fmts[] = {AV_SAMPLE_FMT_S16, (enum AVSampleFormat)-1};
+  static const int64_t out_channel_layouts[] = {AV_CH_LAYOUT_MONO, -1};
   static const int out_sample_rates[] = {8000, -1};
-  const AVFilterLink *outlink;
+  const AVFilterLink* outlink;
 
   AVRational time_base_1 = fmt_ctx1->streams[audio_stream_index_1]->time_base;
   AVRational time_base_2 = fmt_ctx2->streams[audio_stream_index_2]->time_base;
@@ -261,7 +260,7 @@ static int init_filters(const char *filters_descr) {
   inputs->pad_idx = 0;
   inputs->next = NULL;
 
-  AVFilterInOut *filter_outputs[2];
+  AVFilterInOut* filter_outputs[2];
   filter_outputs[0] = outputs1;
 #if (ENABLE_FILTERS)
   filter_outputs[1] = outputs2;
@@ -286,7 +285,8 @@ static int init_filters(const char *filters_descr) {
                                outlink->channel_layout);
   av_log(NULL, AV_LOG_INFO, "Output: srate:%dHz fmt:%s chlayout:%s\n",
          (int)outlink->sample_rate,
-         (char *)av_x_if_null(av_get_sample_fmt_name((enum AVSampleFormat)outlink->format), "?"),
+         (char*)av_x_if_null(
+             av_get_sample_fmt_name((enum AVSampleFormat)outlink->format), "?"),
          args1);
 
 end:
@@ -296,53 +296,55 @@ end:
   return ret;
 }
 
-static void print_frame(const AVFrame *frame)
-#if 0
+static void print_frame(const AVFrame* frame)
+#if 1
 {
-    FILE *file = NULL;
-    const int n = frame->nb_samples * av_get_channel_layout_nb_channels(av_frame_get_channel_layout(frame));
-    const uint16_t *p     = (uint16_t*)frame->data[0];
-    const uint16_t *p_end = p + n;
- 
-    file = fopen("tmp.pcm", "ab+");
-    if (NULL == file){
-      perror("fopen tmp.mp3 error\n");
-      return;
-    } else {
-      perror("fopen tmp.aac successful\n");
+  FILE* file = NULL;
+  const int n = frame->nb_samples * av_get_channel_layout_nb_channels(
+                                        av_frame_get_channel_layout(frame));
+  const uint16_t* p = (uint16_t*)frame->data[0];
+  const uint16_t* p_end = p + n;
+
+  file = fopen("./tmp4.pcm", "ab+");
+  if (NULL == file) {
+    perror("fopen tmp.mp3 error\n");
+    return;
+  } else {
+    perror("fopen tmp.aac successful\n");
+  }
+  fwrite(frame->data[0], n * 2, 1, file);
+  fclose(file);
+
+    if (!wav) {
+      wav = wav_write_open("./test.wav", dec_ctx1->sample_rate,
+                           16,
+                           dec_ctx1->channels);
     }
-    fwrite(frame->data[0], n * 2, 1, file);
-    fclose(file);
-    file = NULL;
+  
+    wav_write_data(wav, (unsigned char *)&frame->data[0], n * 2);
+  file = NULL;
 }
 #else
 {
   const int n = frame->nb_samples * av_get_channel_layout_nb_channels(
                                         av_frame_get_channel_layout(frame));
-  const uint16_t *p = (uint16_t *)frame->data[0];
-  const uint16_t *p_end = p + n;
+  const uint16_t* p = (uint16_t*)frame->data[0];
+  const uint16_t* p_end = p + n;
 
-  //while (p < p_end) {
-  //  fputc(*p & 0xff, stdout);
-  //  fputc(*p >> 8 & 0xff, stdout);
-  //  p++;
-  //}
-  //fflush(stdout);
-
-    if (!wav) {
-    wav = wav_write_open(output.c_str(), dec_ctx1->sample_rate, 24,
-                         dec_ctx1->channels);
+  while (p < p_end) {
+    fputc(*p & 0xff, stdout);
+    fputc(*p >> 8 & 0xff, stdout);
+    p++;
   }
-
-  wav_write_data(wav, (unsigned char *)&frame->data[0], n * 2);
+  fflush(stdout);
 }
 #endif
 
 #undef main
-int maina(int argc, char **argv) {
+int main(int argc, char** argv) {
   int ret;
-  AVFrame *frame = av_frame_alloc();
-  AVFrame *filt_frame = av_frame_alloc();
+  AVFrame* frame = av_frame_alloc();
+  AVFrame* filt_frame = av_frame_alloc();
   int got_frame;
 
   if (!frame || !filt_frame) {
@@ -356,14 +358,16 @@ int maina(int argc, char **argv) {
   }
   */
 
- // std::string file_name = "D:/Download/Videos/LadyLiu/Trip.flv";
-  std::string file_name = "D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
+  av_register_all();
+  avfilter_register_all();
 
-  if ((ret = open_input_file_1(file_name.c_str())) < 0) {
+  if ((ret = open_input_file_1(
+           "D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac")) < 0) {
     av_log(NULL, AV_LOG_ERROR, "open input file fail, ret: %d\n", ret);
     goto end;
   }
-  if ((ret = open_input_file_2(file_name.c_str())) < 0) {
+  if ((ret = open_input_file_2(
+           "D:/Study/Scala/VSWS/transcode/out/build/1.aac")) < 0) {
     av_log(NULL, AV_LOG_ERROR, "open input file fail, ret: %d\n", ret);
     goto end;
   }
@@ -398,14 +402,14 @@ int maina(int argc, char **argv) {
       packet.data += ret;
 
       if (got_frame) {
-        //av_log(NULL, AV_LOG_ERROR, "push frame\n");
+        av_log(NULL, AV_LOG_ERROR, "push frame\n");
         /* push the audio data from decoded frame into the filtergraph */
         if (av_buffersrc_add_frame_flags(buffersrc_ctx1, frame, 0) < 0) {
           av_log(NULL, AV_LOG_ERROR,
                  "Error while feeding the audio filtergraph\n");
           break;
         }
-        //av_log(NULL, AV_LOG_ERROR, "pull frame\n");
+        av_log(NULL, AV_LOG_ERROR, "pull frame\n");
       }
 
       if (packet.size <= 0) av_packet_unref(&packet0);
@@ -430,15 +434,14 @@ int maina(int argc, char **argv) {
       _packet.data += ret;
 
       if (got_frame) {
-        print_frame(frame);
-        //av_log(NULL, AV_LOG_ERROR, "push frame\n");
+        av_log(NULL, AV_LOG_ERROR, "push frame\n");
         /* push the audio data from decoded frame into the filtergraph */
         if (av_buffersrc_add_frame_flags(buffersrc_ctx2, frame, 0) < 0) {
           av_log(NULL, AV_LOG_ERROR,
                  "Error while feeding the audio filtergraph\n");
           break;
         }
-        //av_log(NULL, AV_LOG_ERROR, "pull frame\n");
+        av_log(NULL, AV_LOG_ERROR, "pull frame\n");
       }
 
       if (_packet.size <= 0) av_packet_unref(&_packet0);
@@ -456,7 +459,7 @@ int maina(int argc, char **argv) {
                  ret);
           goto end;
         }
-        //print_frame(frame);
+        print_frame(filt_frame);
         av_frame_unref(filt_frame);
       }
     }
@@ -471,14 +474,13 @@ end:
   av_frame_free(&filt_frame);
 
   if (ret < 0 && ret != AVERROR_EOF) {
-    fprintf(stderr, "Error occurred: %d\n",ret);
+    fprintf(stderr, "Error occurred: %s\n",ret);
     exit(1);
   }
 
-  if (wav) {
-    wav_write_close(wav);
-  }
-
+    if (wav) {
+      wav_write_close(wav);
+    }
 
   exit(0);
 }
