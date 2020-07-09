@@ -44,6 +44,7 @@ extern "C" {
 #include "FFmpegUtil.h"
 #include "wav_writer.hpp"
 #include "wav_reader.hpp"
+#include "seeker/loggerApi.h"
 
 #define ENABLE_FILTERS 1
 
@@ -60,6 +61,11 @@ static AVCodecContext* dec_ctx2;
 AVFilterContext* buffersink_ctx;
 AVFilterContext* buffersrc_ctx1;
 AVFilterContext* buffersrc_ctx2;
+
+AVFormatContext* ofmt_ctx;
+AVCodecContext* enc_ctx;  //输出文件的codec
+int pkt_count = 0;
+AVFrame* frame;
 
 AVFilterGraph* filter_graph;
 static int audio_stream_index_1 = -1;
@@ -135,6 +141,146 @@ static int open_input_file_2(const char* filename) {
   return 0;
 }
 
+int encode_write_frame(AVFrame* filt_frame, unsigned int stream_index) {
+  static int a_total_duration = 0;
+  static int v_total_duration = 0;
+  int ret;
+  I_LOG("Write frame {}", filt_frame->nb_samples);
+  ret = avcodec_send_frame(enc_ctx, filt_frame);
+  if (ret < 0) {
+    E_LOG("Error while sending a frame to the encoder: {}", ret);
+    return -1;
+  }
+
+  while (ret >= 0) {
+    AVPacket pkt;
+    av_init_packet(&pkt);
+    ret = avcodec_receive_packet(enc_ctx, &pkt);
+    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+      break;
+    else if (ret < 0) {
+      E_LOG("Error while encoding a frame: {}", ret);
+      return -1;
+    }
+
+    /* rescale output packet timestamp values from codec to stream timebase */
+    av_packet_rescale_ts(&pkt, enc_ctx->time_base,
+                         ofmt_ctx->streams[stream_index]->time_base);
+    pkt.stream_index = stream_index;
+
+    if (enc_ctx->codec_type != AVMEDIA_TYPE_VIDEO) {
+      pkt.pts = pkt.dts = a_total_duration;
+      a_total_duration +=
+          av_rescale_q(filt_frame->nb_samples, enc_ctx->time_base,
+                       ofmt_ctx->streams[stream_index]->time_base);
+    }
+
+    /* Write the compressed frame to the media file. */
+    // log_packet(fmt_ctx, &pkt);
+
+    pkt.pts = pkt_count * ofmt_ctx->streams[stream_index]->codec->frame_size;
+    pkt.dts = pkt.pts;
+    pkt.duration = ofmt_ctx->streams[stream_index]->codec->frame_size;
+
+    pkt.pts = av_rescale_q_rnd(
+        pkt.pts, ofmt_ctx->streams[stream_index]->codec->time_base,
+        ofmt_ctx->streams[stream_index]->time_base,
+        (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+    pkt.dts = pkt.pts;
+    pkt.duration = av_rescale_q_rnd(
+        pkt.duration, ofmt_ctx->streams[stream_index]->codec->time_base,
+        ofmt_ctx->streams[stream_index]->time_base,
+        (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+
+    ret = av_interleaved_write_frame(ofmt_ctx, &pkt);
+    ++pkt_count;
+    av_packet_unref(&pkt);
+    if (ret < 0) {
+      E_LOG("Error while writing output packet: {}", ret);
+      return -1;
+    }
+  }
+
+  return ret;
+}
+
+int open_output_file(const char* filename) {
+  AVStream* out_stream;
+  AVCodec* encoder;
+  int ret;
+  ofmt_ctx = NULL;
+  avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, filename);
+  if (!ofmt_ctx) {
+    av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
+    return AVERROR_UNKNOWN;
+  }
+  {
+    out_stream = avformat_new_stream(ofmt_ctx, NULL);
+    out_stream->index = 0;
+    if (!out_stream) {
+      av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream\n");
+      return AVERROR_UNKNOWN;
+    }
+
+    encoder = avcodec_find_encoder(AV_CODEC_ID_AAC);
+    enc_ctx = avcodec_alloc_context3(encoder);
+    if (!enc_ctx) {
+      E_LOG("Could not alloc an encoding context\n");
+      return -1;
+    }
+    I_LOG("lalala: {},  {}", av_get_sample_fmt_name((enum AVSampleFormat)encoder->sample_fmts[0]),
+          AV_CH_LAYOUT_MONO);
+    enc_ctx = out_stream->codec;
+    enc_ctx->codec_type = AVMEDIA_TYPE_AUDIO;
+    enc_ctx->sample_rate = 48000;
+    enc_ctx->channels = 2;
+    enc_ctx->channel_layout = 3;
+    enc_ctx->sample_fmt = AV_SAMPLE_FMT_FLTP;
+    // enc_ctx->bit_rate = 320000;
+    enc_ctx->codec_tag = 0;
+    AVRational ar = {1, enc_ctx->sample_rate};
+    enc_ctx->time_base = ar;
+
+    ret = avcodec_open2(enc_ctx, encoder, NULL);
+    if (ret < 0) {
+      av_log(NULL, AV_LOG_ERROR, "Cannot open audio encoder for stream \n");
+      return ret;
+    }
+
+    ret = avcodec_parameters_from_context(out_stream->codecpar, enc_ctx);
+    if (ret < 0) {
+      E_LOG("Could not copy the stream parameters\n");
+      return ret;
+    }
+
+    //av_opt_set(ofmt_ctx->priv_data, "preset", "superfast", 0);
+    //av_opt_set(ofmt_ctx->priv_data, "tune", "zerolatency", 0);
+    //av_opt_set_int(ofmt_ctx->priv_data, "hls_time", 5, AV_OPT_SEARCH_CHILDREN);
+    // av_opt_set_int(ofmt_ctx->priv_data,"hls_list_size", 10,
+    // AV_OPT_SEARCH_CHILDREN);
+
+    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+      enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+  }
+
+  av_dump_format(ofmt_ctx, 0, filename, 1);
+
+  // if (!(ofmt_ctx->oformat->flags & AVFMT_NOFILE)) {
+  ret = avio_open(&ofmt_ctx->pb, filename, AVIO_FLAG_WRITE);
+  if (ret < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Could not open output file '%s'", filename);
+    return ret;
+  }
+  // }
+  /* init Mixer, write output file header */
+  ret = avformat_write_header(ofmt_ctx, NULL);
+  if (ret < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output file\n");
+    return ret;
+  }
+  return 0;
+}
+
 static int init_filters(const char* filters_descr) {
   char args1[512];
   char args2[512];
@@ -148,11 +294,12 @@ static int init_filters(const char* filters_descr) {
   AVFilterInOut* inputs = avfilter_inout_alloc();
 
   static const enum AVSampleFormat out_sample_fmts[] = {
-      dec_ctx1->sample_fmt,
+      AV_SAMPLE_FMT_FLTP  ,// dec_ctx1->sample_fmt,
       (enum AVSampleFormat) - 1};  //{AV_SAMPLE_FMT_S16}
-  static const int64_t out_channel_layouts[] = {dec_ctx1->channel_layout,
-                                                -1};  //{AV_CH_LAYOUT_MONO, -1}
-  static const int out_sample_rates[] = {dec_ctx1->sample_rate, -1};
+  static const int64_t out_channel_layouts[] =
+      //{dec_ctx1->channel_layout,  -1};
+      {3, -1};
+  static const int out_sample_rates[] = {48000, -1};//{dec_ctx1->sample_rate, -1};
   const AVFilterLink* outlink;
 
   AVRational time_base_1 = fmt_ctx1->streams[audio_stream_index_1]->time_base;
@@ -344,7 +491,7 @@ static void print_frame(const AVFrame* frame)
 #endif
 
 #undef main
-int mainsss(int argc, char** argv) {
+int main123(int argc, char** argv) {
   int ret;
   AVFrame* frame = av_frame_alloc();
   AVFrame* filt_frame = av_frame_alloc();
@@ -361,8 +508,6 @@ int mainsss(int argc, char** argv) {
   }
   */
 
-  av_register_all();
-  avfilter_register_all();
 
   if ((ret = open_input_file_1(
            "D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac")) < 0) {
@@ -370,7 +515,7 @@ int mainsss(int argc, char** argv) {
     goto end;
   }
   if ((ret = open_input_file_2(
-           "D:/Study/Scala/VSWS/transcode/out/build/1.aac")) < 0) {
+           "D:/Study/Scala/VSWS/transcode/out/build/x64-Release/trip.aac")) < 0) {
     av_log(NULL, AV_LOG_ERROR, "open input file fail, ret: %d\n", ret);
     goto end;
   }
@@ -378,6 +523,8 @@ int mainsss(int argc, char** argv) {
     av_log(NULL, AV_LOG_ERROR, "init filters fail, ret: %d\n", ret);
     goto end;
   }
+
+  if ((ret = open_output_file("./hls/qaq.aac")) < 0) return ret;
 
   AVPacket packet0, packet;
   AVPacket _packet0, _packet;
@@ -462,7 +609,8 @@ int mainsss(int argc, char** argv) {
                  ret);
           goto end;
         }
-        print_frame(filt_frame);
+        //print_frame(filt_frame);
+        encode_write_frame(filt_frame, 0);
         av_frame_unref(filt_frame);
       }
     }
@@ -484,6 +632,9 @@ end:
     if (wav) {
       wav_write_close(wav);
     }
-
+    av_write_trailer(ofmt_ctx);
+    if (ofmt_ctx && !(ofmt_ctx->oformat->flags & AVFMT_NOFILE))
+      avio_closep(&ofmt_ctx->pb);
+    avformat_free_context(ofmt_ctx);
   exit(0);
 }

@@ -1,5 +1,13 @@
+/**
+ * Author: Hidden Track
+ * Date: 2020/06/05
+ * Time: 11:37
+ *
+ * 解码器头文件
+ *
+ */
+
 #pragma once
-// 此类设计输入H264码流，输出BGR buffer 数据
 #include <stdio.h>
 #include <atomic>
 
@@ -26,6 +34,7 @@ class FFmpegDecoder {
 
   AVPacket *getPkt();
   AVFrame *getFrame();
+  void reset();
 
  private:
   int decode(AVPacket *mpkt);

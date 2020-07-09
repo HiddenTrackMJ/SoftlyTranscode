@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
   Mixer mixer;
   //mixer.mix("D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac", "./hls/test.aac");
   mixer.open_thread(8080, "./hls/mix.aac");
+  I_LOG("ppp");
   return 1000;
 
 //  std::string s = "hello1";

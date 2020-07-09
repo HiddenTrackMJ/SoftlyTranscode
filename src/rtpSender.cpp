@@ -131,6 +131,8 @@ void RtpSender::send_aac() {
 
     I_LOG("frmae len: {}", adtsHeader.aacFrameLength);
 
+
+
     len = fread(frame + ADTS_HRADER_LENGTH, 1, adtsHeader.aacFrameLength - 7,
                 aac);
 
@@ -236,6 +238,7 @@ void RtpSender::send_aac(const string &destipstr, int destport,
 
       memcpy(frame + ADTS_HRADER_LENGTH, output, adtsHeader.aacFrameLength - 7);
       output_size -= adtsHeader.aacFrameLength;
+
       status = sess.SendPacket(output, adtsHeader.aacFrameLength);
       checkerror(status);
 

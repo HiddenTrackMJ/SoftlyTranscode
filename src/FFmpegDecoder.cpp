@@ -1,3 +1,12 @@
+/**
+ * Author: Hidden Track
+ * Date: 2020/06/05
+ * Time: 11:52
+ *
+ * ½âÂëÆ÷
+ *
+ */
+
 //#include "config.h"
 #include "seeker/loggerApi.h"
 #include "FFmpegDecoder.h"
@@ -80,14 +89,19 @@ int FFmpegDecoder::InputData(unsigned char *inputData, int inputLen) {
 AVPacket* FFmpegDecoder::getPkt() { return pkt; }
 
 
-AVFrame *FFmpegDecoder::getFrame() { return out_frame; }
+AVFrame *FFmpegDecoder::getFrame() { return av_frame_clone(out_frame); }
+
+void FFmpegDecoder::reset() { 
+    av_frame_unref(out_frame); 
+    av_frame_unref(frame); 
+    av_packet_unref(pkt);
+}
 
 int FFmpegDecoder::decode(AVPacket *mpkt) {
     int ret;
     ret = avcodec_send_packet(c, mpkt);
     if (ret < 0) {
         E_LOG("Error sending a packet for decoding");
-        // exit(1);
     }
 
     //while (ret >= 0) {
@@ -106,5 +120,5 @@ int FFmpegDecoder::decode(AVPacket *mpkt) {
 
     //}
     
-    return 0;
+    return ret;
 }
