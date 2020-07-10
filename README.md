@@ -2,8 +2,9 @@
 
 ### 混流测试
  - [x] 官方源码测试
- - [ ] 一路流混流测试
- - [ ] 多路流混流测试
+ - [x] 一路流混流测试
+ - [x] 多路流混流测试
+ - [x] 多线程混流测试
  - [ ] 接收与混流结合
 
 
@@ -29,14 +30,3 @@
 
 #### 注：编码demo的输入文件必须是严格的.wav文件，不能是其他格式修改后缀得到的，我测试是将.flac用ffmpeg转码成.wav的。
 
-
-apt-get update 
-apt-get install -y curl apt-transport-https
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-
-cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
-deb http://apt.kubernetes.io/ kubernetes-xenial main
-EOF
-
-apt-get update
-apt-get install -y docker.io 

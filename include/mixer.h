@@ -99,13 +99,7 @@ class Mixer {
 
   filter_info _filter;
 
-  SwrContext *pSwrCtx;
-
   AVFrame *frame;
-
-  AVFrame *_frame;
-
-  AVPacket packet;  
 
   bool stop;
 
@@ -120,41 +114,24 @@ class Mixer {
 
   ~Mixer();
 
-  void initSwr();
-
-  void setup_array(uint8_t *out[32], AVFrame *in_frame,
-                   enum AVSampleFormat format, int samples);
-
-  int TransSample(AVFrame *in_frame, AVFrame *out_frame);
-
-  int ReSample(AVFrame *in_frame, AVFrame *out_frame);
-
   int open_input_file(const char *filename);
 
   int _open_input_file(const char *filename);
 
   int open_output_file(const char *filename);
 
-  int init_filters(const char *filters_descr);
-
-  int InitFilter(const char *filter_desc);
+  int init_filter(const char *filters_descr);
 
   int encode_write_frame(AVFrame *filt_frame, unsigned int stream_index);
-
-  int flush_encoder(unsigned int stream_index);
-
-  int mix(std::string input_aac, std::string dst);
 
   int recv_aac_mix(int port, std::string input_aac, std::string dst);
 
   int recv_aac_thread(std::string input_aac, pkt_list_info *pkt_list_ctx,
-                      int index);
+                      int index); //监听线程，接收aac数据
 
-  int process_thread(std::string dst_file);
+  int process_thread(std::string dst_file); // 处理数据线程
 
-  int open_thread(int port, std::string dst);
+  int open_thread(int port, std::string dst); //开启监听线程及处理数据线程
 
   void close_thread();
-
-  int mix_test();
 };

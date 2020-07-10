@@ -95,6 +95,7 @@ void FFmpegDecoder::reset() {
     av_frame_unref(out_frame); 
     av_frame_unref(frame); 
     av_packet_unref(pkt);
+    parser->parser->parser_init(parser);
 }
 
 int FFmpegDecoder::decode(AVPacket *mpkt) {
