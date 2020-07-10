@@ -94,22 +94,6 @@ aux_source_directory(./src CPP_LIST)
 
 add_executable (${PROJECT_NAME} 
         ${CPP_LIST}
- #      "src/main.cpp" 
- #     "src/FFmpegDecoder.cpp"
- #       "src/remuxing.cpp" 
- #       "src/fdk_enc.cpp" 
- #       "src/fdk_dec.cpp" 
- #        "src/test_enc.cpp" 
- #       "src/test_dec.cpp" 
- #        "src/rtpRecv.cpp"
- #        "include/fdk_demo.hpp"
- #         "src/rtpSender.cpp" 
- #       "src/RtpSess.cpp" 
- #        "src/encoder.cpp" 
- #         "src/hls_encoder.cpp" 
- #        "src/muxing.cpp" 
- #        "src/dash_encoder.cpp" 
- #        "src/muxer.cpp" 
  #         "src/audio_avfilter.cpp"
  #          "include/FFmpegUtil.h"
  #         "src/audio_filter.cpp"

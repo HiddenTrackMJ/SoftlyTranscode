@@ -26,6 +26,8 @@ extern "C" {
 #include <iostream>
 #include <list>
 #include <string>
+#include <vector>
+#include <map>
 
 #include "FFmpegDecoder.h"
 #include "adts_header.hpp"
@@ -44,25 +46,54 @@ struct codec_info {
   int64_t channel_layout;
 
   enum AVSampleFormat sample_fmt;
+
+  AVRational time_base;
+
+  codec_info() {
+    sample_rate = 48000;
+    channels = 2;
+    channel_layout =
+        av_get_default_channel_layout(channels);
+    sample_fmt = AV_SAMPLE_FMT_FLTP;
+    time_base = {1, sample_rate};
+  }
 };
 
 
 
 class Mixer {
  public:
+  struct src_filter {
+    char args[512];
+
+    const char *pad_name;
+
+    const AVFilter *abuffersrc;
+
+    AVFilterContext *buffersrc_ctx;
+
+    codec_info src_codec_info;
+
+    AVFilterInOut *outputs;
+
+    src_filter::src_filter() {}
+
+    src_filter::src_filter(int n) {
+      abuffersrc = avfilter_get_by_name("abuffer");
+      outputs = avfilter_inout_alloc();
+      if (!outputs) {
+        E_LOG("init filter input output error!!!");
+      }
+      std::string p = "in" + std::to_string(n);
+      pad_name = p.c_str();
+    }
+  };
+
   struct filter_info {
-    char *filter_desc = "[in0][in1]amix=inputs=2[out]"; 
-        //"aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
+    const char *filter_desc = "[in0][in1]amix=inputs=2[out]";
+    //"aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
 
-    const char *player = "ffplay -f s16le -ar 8000 -ac 1 -";
-
-    AVFormatContext *fmt_ctx = nullptr;
-
-    AVCodecContext *dec_ctx;
-
-    AVFormatContext *_fmt_ctx = nullptr;
-
-    AVCodecContext *_dec_ctx;
+    std::map<int32_t, std::shared_ptr<src_filter>> src_filter_map;
 
     AVFilterContext *buffersink_ctx;
 
@@ -72,9 +103,17 @@ class Mixer {
 
     AVFilterGraph *filter_graph;
 
-    int audio_stream_index = -1;
+    filter_info::filter_info() { }
 
-    int _audio_stream_index = -1;
+    filter_info::filter_info(int n) {
+      filter_desc = gen_filter_desc(n).c_str();
+      int i = 0;
+      for (i = 0; i < n; i++) {
+        std::shared_ptr<src_filter> filter_ptr(new src_filter);
+        //buffersrc_map.insert(std::make_pair((int32_t)i, std::make_pair(std::move(buffer_ptr), std::move(filter_ptr))));
+        src_filter_map.insert(std::make_pair((int32_t)i, std::move(filter_ptr)));
+      }
+    }
   };
 
   struct pkt_list_info {
@@ -114,20 +153,19 @@ class Mixer {
 
   ~Mixer();
 
-  int open_input_file(const char *filename);
-
-  int _open_input_file(const char *filename);
+  static std::string gen_filter_desc(int n);
 
   int open_output_file(const char *filename);
 
   int init_filter(const char *filters_descr);
 
-  int encode_write_frame(AVFrame *filt_frame, unsigned int stream_index);
+  int init_filters(int n);
+
+  int encode_write_frame(AVFrame *filt_frame, unsigned int stream_index);//向输出文件写入
 
   int recv_aac_mix(int port, std::string input_aac, std::string dst);
 
-  int recv_aac_thread(std::string input_aac, pkt_list_info *pkt_list_ctx,
-                      int index); //监听线程，接收aac数据
+  int recv_aac_thread(std::string input_aac, pkt_list_info *pkt_list_ctx, int index); //监听线程，接收aac数据
 
   int process_thread(std::string dst_file); // 处理数据线程
 

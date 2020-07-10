@@ -25,21 +25,31 @@
 #include <thread>
 
 
-#define First 1
+#define First 0
 
 extern int decode_test(std::string input, std::string output);
 extern int encode_test(std::string input, std::string output);
 
-
+#ifdef First
 int main(int argc, char *argv[]) {
   seeker::Logger::init();
 
   I_LOG("This is TransCode");
 
+   int n = 5;
+
+   const char *pad_name;
+
+   std::string p = "in" + std::to_string(n);
+
+   pad_name = "in";  // p.c_str();
+
+
   Mixer mixer;
   //mixer.mix("D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac", "./hls/test.aac");
-  mixer.open_thread(8080, "./hls/mix.aac");
-  I_LOG("ppp");
+  //mixer.open_thread(8080, "./hls/mix.aac");
+  I_LOG("pad_name: {}", pad_name);
+  I_LOG("decs: {}", mixer.gen_filter_desc(8).c_str());
   return 1000;
 
 //  std::string s = "hello1";
@@ -99,3 +109,53 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+#else
+extern "C" {
+#include "libavcodec/avcodec.h"
+#include "libavdevice/avdevice.h"
+#include "libavfilter/avfilter.h"
+#include "libavfilter/buffersink.h"
+#include "libavfilter/buffersrc.h"
+#include "libavformat/avformat.h"
+#include "libavutil/audio_fifo.h"
+#include "libavutil/avutil.h"
+#include "libavutil/fifo.h"
+}
+class Fmt_ctx_in {
+ public:
+  AVAudioFifo* _fifo_spk;
+  int index;
+  int* ptr;
+
+  void Set_fifo(AVAudioFifo* _fifo_spk2) { _fifo_spk = _fifo_spk2; }
+  Fmt_ctx_in() {
+    _fifo_spk = NULL;
+    index = -1;
+  }
+};
+
+
+
+int main() {
+  int index = 3;
+  std::shared_ptr<Fmt_ctx_in> fmt_ptr1(new Fmt_ctx_in);
+  std::shared_ptr<Fmt_ctx_in> fmt_ptr2(new Fmt_ctx_in);
+  std::vector<std::shared_ptr<Fmt_ctx_in> > _fmt_ctx_in = {};
+  _fmt_ctx_in.push_back(fmt_ptr1);
+  _fmt_ctx_in.push_back(fmt_ptr2);
+  for (auto it : _fmt_ctx_in) {
+    index++;
+    it->index = index;
+    it->ptr = &(it->index);
+    std::cout << "ptr1: " << it->ptr << std::endl;
+  }
+
+   for (auto it : _fmt_ctx_in) {
+    std::cout << "index: " << it->index << std::endl;
+     std::cout << "ptr2: " << it->ptr << std::endl;
+  }
+
+  return 0;
+}
+
+#endif
