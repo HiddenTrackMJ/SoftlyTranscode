@@ -141,7 +141,7 @@ int Mixer::encode_write_frame(AVFrame *filt_frame, unsigned int stream_index) {
   static int a_total_duration = 0;
   static int v_total_duration = 0;
   int ret;
-  //I_LOG("Write frame {}", filt_frame->pts);
+  I_LOG("Write frame {}", filt_frame->pts);
   ret = avcodec_send_frame(enc_ctx, filt_frame);
   if (ret < 0) {
     E_LOG("Error while sending a frame to the encoder: {}", ret);
@@ -339,9 +339,9 @@ int Mixer::init_filter(const char *filter_desc) {
   filter_outputs[1] = outputs2;
 
 
-  if ((ret = avfilter_graph_parse_ptr(filter.filter_graph, filter.filter_desc,
-                                      &inputs, filter_outputs, NULL)) <
-      0)  // filter_outputs
+  if ((ret = avfilter_graph_parse_ptr(
+           filter.filter_graph, filter.filter_desc.c_str(),
+                                      &inputs, filter_outputs, NULL)) < 0)  // filter_outputs
   {
     av_log(NULL, AV_LOG_ERROR, "parse ptr fail, ret: %d\n", ret);
     goto end;
@@ -374,16 +374,12 @@ end:
 }
 
 int Mixer::init_filters(int n) {
+  filter.init(n);
 
-  char args1[512];
-  char args2[512];
   int ret = 0;
-  const AVFilter *abuffersrc1 = avfilter_get_by_name("abuffer");
-  const AVFilter *abuffersrc2 = avfilter_get_by_name("abuffer");
+
   const AVFilter *abuffersink = avfilter_get_by_name("abuffersink");
 
-  AVFilterInOut *outputs1 = avfilter_inout_alloc();
-  AVFilterInOut *outputs2 = avfilter_inout_alloc();
   AVFilterInOut *inputs = avfilter_inout_alloc();
 
   static const enum AVSampleFormat out_sample_fmts[] = { out_codec_info.sample_fmt, (enum AVSampleFormat) - 1};
@@ -396,6 +392,7 @@ int Mixer::init_filters(int n) {
   AVRational time_base_1 = in_codec_info.time_base;
   AVRational time_base_2 = in_codec_info.time_base;
 
+  
   filter.filter_graph = avfilter_graph_alloc();
   if (!inputs || !filter.filter_graph) {
     ret = AVERROR(ENOMEM);
@@ -414,7 +411,8 @@ int Mixer::init_filters(int n) {
                 << " sample_rates: " << iter->second->src_codec_info.sample_rate << std::endl;
 
       AVRational time_base = iter->second->src_codec_info.time_base;
-
+      std::cout << "pad_name: " << iter->second->pad_name
+                << ", size: " << sizeof(iter->second->pad_name.c_str()) << std::endl;
       /* buffer audio source: the decoded frames from the decoder will be
        * inserted here. */
       snprintf(iter->second->args, sizeof(iter->second->args),
@@ -424,8 +422,9 @@ int Mixer::init_filters(int n) {
                iter->second->src_codec_info.sample_rate,
                av_get_sample_fmt_name(iter->second->src_codec_info.sample_fmt),
                iter->second->src_codec_info.channel_layout);
-      ret = avfilter_graph_create_filter(&filter.buffersrc_ctx, iter->second->abuffersrc,
-                                         iter->second->pad_name, iter->second->args, NULL,
+      ret = avfilter_graph_create_filter(
+          &(iter->second->buffersrc_ctx), iter->second->abuffersrc,
+                                         iter->second->pad_name.c_str(), iter->second->args, NULL,
                                          filter.filter_graph);
       if (ret < 0) {
         av_log(NULL, AV_LOG_ERROR, "Cannot create audio buffer source1\n");
@@ -436,6 +435,7 @@ int Mixer::init_filters(int n) {
     }
   }
 
+  I_LOG("here1");
   /* buffer audio sink: to terminate the filter chain. */
   ret = avfilter_graph_create_filter(&filter.buffersink_ctx, abuffersink, "out",
                                      NULL, NULL, filter.filter_graph);
@@ -475,35 +475,58 @@ int Mixer::init_filters(int n) {
    * filter input label is not specified, it is set to "in" by
    * default.
    */
+  I_LOG("here2");
+  AVFilterInOut **filter_outputs;
+  int m = n + 1;
+  filter_outputs = new AVFilterInOut*[m];
+  //AVFilterInOut *outputs1 = avfilter_inout_alloc();
+  //AVFilterInOut *outputs2 = avfilter_inout_alloc();
 
-   AVFilterInOut **filter_outputs;
-   filter_outputs = new AVFilterInOut*[n];
+  //filter.src_filter_map.find(0)->second->outputs->name = av_strdup("in0");
+  //filter.src_filter_map.find(0)->second->outputs->filter_ctx = filter.src_filter_map.find(0)->second->buffersrc_ctx;
+  //filter.src_filter_map.find(0)->second->outputs->pad_idx = 0;
+  //filter.src_filter_map.find(0)->second->outputs->next = filter.src_filter_map.find(1)->second->outputs;
+  //filter_outputs[0] = filter.src_filter_map.find(0)->second->outputs;
 
-    for (i = 0; i < n; i++) {
+  //filter.src_filter_map.find(1)->second->outputs->name = av_strdup("in1");
+  //filter.src_filter_map.find(1)->second->outputs->filter_ctx =
+  //    filter.src_filter_map.find(1)->second->buffersrc_ctx;
+  //filter.src_filter_map.find(1)->second->outputs->pad_idx = 0;
+  //filter.src_filter_map.find(1)->second->outputs->next = NULL;
+  ////AVFilterInOut *filter_outputs[5];
+
+  //filter_outputs[1] = filter.src_filter_map.find(1)->second->outputs;
+
+  for (i = 0; i < n; i++) {
     auto iter = filter.src_filter_map.find(i);
     auto _iter = filter.src_filter_map.find(i + 1);
-    if (iter != filter.src_filter_map.end()
-        && _iter != filter.src_filter_map.end()) {
+    const char *p;
+    std::string pad = "in" + std::to_string(i);
+    p = pad.c_str();
+    std::cout << "pad_name: " << p << std::endl;
+   
+    if (iter != filter.src_filter_map.end() &&
+        _iter != filter.src_filter_map.end()) {
 
-      iter->second->outputs->name = av_strdup(iter->second->pad_name);
+      I_LOG("here3, pad_name {}, outputs: ", iter->second->pad_name.c_str());
+      iter->second->outputs->name = av_strdup(iter->second->pad_name.c_str());
       iter->second->outputs->filter_ctx = iter->second->buffersrc_ctx;
       iter->second->outputs->pad_idx = 0;
       iter->second->outputs->next = _iter->second->outputs;
-
-      filter_outputs[n] = iter->second->outputs;
+      filter_outputs[i] = iter->second->outputs;
 
     } else if (iter != filter.src_filter_map.end() &&
                _iter == filter.src_filter_map.end()) {
 
-      iter->second->outputs->name = av_strdup(iter->second->pad_name);
+      I_LOG("here6, pad_name {}, outputs: ", iter->second->pad_name.c_str());
+      iter->second->outputs->name = av_strdup(iter->second->pad_name.c_str());
       iter->second->outputs->filter_ctx = iter->second->buffersrc_ctx;
       iter->second->outputs->pad_idx = 0;
       iter->second->outputs->next = NULL;
+      filter_outputs[i] = iter->second->outputs;
 
-      filter_outputs[n] = iter->second->outputs;
-    }
-    else {
-      E_LOG("Can't find buffersrc, index: {}", i);
+    } else {
+      E_LOG("Can't find buffersrc 222, index: {}", i);
     }
   }
 
@@ -514,6 +537,7 @@ int Mixer::init_filters(int n) {
    * filter output label is not specified, it is set to "out" by
    * default.
    */
+  I_LOG("here4");
   inputs->name = av_strdup("out");
   inputs->filter_ctx = filter.buffersink_ctx;
   inputs->pad_idx = 0;
@@ -523,9 +547,11 @@ int Mixer::init_filters(int n) {
   //filter_outputs[0] = outputs1;
   //filter_outputs[1] = outputs2;
 
-  if ((ret = avfilter_graph_parse_ptr(filter.filter_graph, filter.filter_desc,
-                                      &inputs, filter_outputs, NULL)) <
-      0)  // filter_outputs
+  I_LOG("here5: {}", filter.filter_desc.c_str());
+  if ((ret = avfilter_graph_parse_ptr(filter.filter_graph, filter.filter_desc.c_str(),
+                                      &inputs, 
+      filter_outputs,
+      NULL)) < 0)  // filter_outputs
   {
     av_log(NULL, AV_LOG_ERROR, "parse ptr fail, ret: %d\n", ret);
     return ret;
@@ -538,21 +564,22 @@ int Mixer::init_filters(int n) {
 
   /* Print summary of the sink buffer
    * Note: args buffer is reused to store channel layout string */
-  outlink = filter.buffersink_ctx->inputs[0];
-  av_get_channel_layout_string(args1, sizeof(args1), -1,
-                               outlink->channel_layout);
-  av_log(NULL, AV_LOG_INFO, "Output: srate:%dHz fmt:%s chlayout:%s\n",
-         (int)outlink->sample_rate,
-         (char *)av_x_if_null(
-             av_get_sample_fmt_name((enum AVSampleFormat)outlink->format), "?"),
-         args1);
+  //outlink = filter.buffersink_ctx->inputs[0];
+  //av_get_channel_layout_string(filter.src_filter_map[1]->args,
+  //                             sizeof(filter.src_filter_map[1]->args), -1,
+  //                             outlink->channel_layout);
+  //av_log(NULL, AV_LOG_INFO, "Output: srate:%dHz fmt:%s chlayout:%s\n",
+  //       (int)outlink->sample_rate,
+  //       (char *)av_x_if_null(
+  //           av_get_sample_fmt_name((enum AVSampleFormat)outlink->format), "?"),
+  //       filter.src_filter_map[1]->args);
 
 
   avfilter_inout_free(&inputs);
   avfilter_inout_free(filter_outputs);
 
-  // char *temp = avfilter_graph_dump(filter.filter_graph, NULL);
-  // printf("%s\n", temp);
+   char *temp = avfilter_graph_dump(filter.filter_graph, NULL);
+   printf("%s\n", temp);
 
   return ret;
 }
@@ -680,7 +707,8 @@ int Mixer::recv_aac_thread( std::string input_aac, pkt_list_info* pkt_list_ctx, 
   int ret;
   if (index == 1) {
     //if ((ret = open_input_file(input_aac.c_str())) < 0) return -1;
-    if ((ret = init_filter(filter.filter_desc)) < 0) return -1;
+    //if ((ret = init_filter(filter.filter_desc.c_str())) < 0) return -1;
+    if ((ret = init_filters(2)) < 0) return -1;
   } else {
    // if ((ret = _open_input_file(input_aac.c_str())) < 0) return -1;
   }
@@ -760,6 +788,7 @@ int Mixer::process_thread(std::string dst_file) {
     AVFrame *frame_out = av_frame_alloc();
 
     // first stream
+    auto iter = filter.src_filter_map.find(0);
     std::unique_lock<std::mutex> lock(*(pkt_list_ctx1.pkt_list_mu));
     pkt_list_ctx1.pkt_list_cv->wait(lock, [this] {
       return !pkt_list_ctx1.pkt_list.empty() ||
@@ -790,7 +819,7 @@ int Mixer::process_thread(std::string dst_file) {
     }
 
     /* push the audio data from decoded frame into the filtergraph */
-    if (av_buffersrc_add_frame_flags(filter.buffersrc_ctx, frame, 0) < 0) {
+    if (av_buffersrc_add_frame_flags(iter->second->buffersrc_ctx, frame, 0) < 0) {
       av_log(NULL, AV_LOG_ERROR,
              "Error while feeding the audio filtergraph1\n");
       break;
@@ -801,6 +830,7 @@ int Mixer::process_thread(std::string dst_file) {
 
 
     //second stream
+    auto _iter = filter.src_filter_map.find(1);
     std::unique_lock<std::mutex> _lock(*(pkt_list_ctx2.pkt_list_mu));
     pkt_list_ctx2.pkt_list_cv->wait(_lock, [this] {
       return !pkt_list_ctx1.pkt_list.empty() ||
@@ -830,7 +860,8 @@ int Mixer::process_thread(std::string dst_file) {
     }
 
     /* push the audio data from decoded frame into the filtergraph */
-    if (av_buffersrc_add_frame_flags(filter._buffersrc_ctx, frame, 0) < 0) {
+    if (av_buffersrc_add_frame_flags(_iter->second->buffersrc_ctx, frame, 0) <
+        0) {
       av_log(NULL, AV_LOG_ERROR,
              "Error while feeding the audio filtergraph2\n");
       break;

@@ -47,8 +47,9 @@ int main(int argc, char *argv[]) {
 
   Mixer mixer;
   //mixer.mix("D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac", "./hls/test.aac");
-  //mixer.open_thread(8080, "./hls/mix.aac");
+  mixer.open_thread(8080, "./hls/mix.aac");
   I_LOG("pad_name: {}", pad_name);
+  //mixer.init_filters(2);
   I_LOG("decs: {}", mixer.gen_filter_desc(8).c_str());
   return 1000;
 

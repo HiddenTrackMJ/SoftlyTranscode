@@ -66,7 +66,7 @@ class Mixer {
   struct src_filter {
     char args[512];
 
-    const char *pad_name;
+    std::string pad_name;
 
     const AVFilter *abuffersrc;
 
@@ -78,19 +78,22 @@ class Mixer {
 
     src_filter::src_filter() {}
 
-    src_filter::src_filter(int n) {
+    void src_filter::init(int n) {
       abuffersrc = avfilter_get_by_name("abuffer");
       outputs = avfilter_inout_alloc();
-      if (!outputs) {
+      if (!outputs || !abuffersrc) {
         E_LOG("init filter input output error!!!");
       }
+      if (abuffersrc) I_LOG("shit");
       std::string p = "in" + std::to_string(n);
-      pad_name = p.c_str();
+      I_LOG("init src_filter: {}", p);
+      pad_name = p;
     }
   };
 
-  struct filter_info {
-    const char *filter_desc = "[in0][in1]amix=inputs=2[out]";
+  class filter_info {
+   public:
+    std::string filter_desc = "[in0][in1]amix=inputs=2[out]";
     //"aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
 
     std::map<int32_t, std::shared_ptr<src_filter>> src_filter_map;
@@ -105,11 +108,13 @@ class Mixer {
 
     filter_info::filter_info() { }
 
-    filter_info::filter_info(int n) {
-      filter_desc = gen_filter_desc(n).c_str();
+    void filter_info::init(int n) {
+      filter_desc = gen_filter_desc(n);
+      I_LOG("init filter_desc: {}", filter_desc);
       int i = 0;
       for (i = 0; i < n; i++) {
         std::shared_ptr<src_filter> filter_ptr(new src_filter);
+        filter_ptr->init(i);
         //buffersrc_map.insert(std::make_pair((int32_t)i, std::make_pair(std::move(buffer_ptr), std::move(filter_ptr))));
         src_filter_map.insert(std::make_pair((int32_t)i, std::move(filter_ptr)));
       }

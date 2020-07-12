@@ -62,7 +62,6 @@
 //static int audio_stream_index = -1;
 //void *wav = NULL;
 //std::string output = "./test.wav";
-//FILE *file = fopen("tmp.pcm", "ab");
 //
 //static SwrContext *pSwrCtx = NULL;
 //
@@ -223,19 +222,37 @@
 //}
 //
 //static int init_filters(const char *filters_descr) {
-//  char args[512];
+//
+//  /** An instance of a filter */
+//  AVFilterContext *buffersink_ctx; //sink filter实例（输出）
+//  AVFilterContext *buffersrc_ctx;  //src filter实例（输入）
+//  AVFilterGraph *filter_graph;
+//  char args[512];  
 //  int ret = 0;
-//  const AVFilter *abuffersrc = avfilter_get_by_name("abuffer");
-//  const AVFilter *abuffersink = avfilter_get_by_name("abuffersink");
-//  AVFilterInOut *outputs = avfilter_inout_alloc();
-//  AVFilterInOut *inputs = avfilter_inout_alloc();
-//  static const enum AVSampleFormat out_sample_fmts[] = {dec_ctx->sample_fmt, (enum AVSampleFormat)-1};//{AV_SAMPLE_FMT_S16}
-//  static const int64_t out_channel_layouts[] = {dec_ctx->channel_layout, -1};//{AV_CH_LAYOUT_MONO, -1}
-//  static const int out_sample_rates[] = {dec_ctx->sample_rate, -1};
-//  std::cout << "sample_fmt: " << av_get_sample_fmt_name(dec_ctx->sample_fmt)
-//            << "channel_layout: " << dec_ctx->channel_layout
-//            << "sample_rates: " << out_sample_rates[0]
-//            << "bits_per_raw_sample: " << dec_ctx->bits_per_raw_sample << std::endl;
+//
+//  /**
+//   * Filter definition. This defines the pads a filter contains, and all the
+//   * callback functions used to interact with the filter.
+//   */
+//  const AVFilter *abuffersrc = avfilter_get_by_name("abuffer");  //有多少个输入就创建多少个，当输入输出为一的时候相当于直接重采样
+//  const AVFilter *abuffersink = avfilter_get_by_name("abuffersink"); //有多少个输出就创建多少个
+//
+//  /**
+//   * A linked-list of the inputs/outputs of the filter chain.
+//   *
+//   * This is mainly useful for avfilter_graph_parse() / avfilter_graph_parse2(),
+//   * where it is used to communicate open (unlinked) inputs and outputs from and
+//   * to the caller.
+//   * This struct specifies, per each not connected pad contained in the graph,
+//   * the filter context and the pad index required for establishing a link.
+//   */
+//
+//  AVFilterInOut *outputs = avfilter_inout_alloc(); //输入filter chain
+//  AVFilterInOut *inputs = avfilter_inout_alloc();  //输出filter chain
+//  static const enum AVSampleFormat out_sample_fmts[] = {
+//      AV_SAMPLE_FMT_FLTP, (enum AVSampleFormat) - 1};  //输出sample_fmt
+//  static const int64_t out_channel_layouts[] = {3, -1};//输出channel_layouts
+//  static const int out_sample_rates[] = {48000, -1};   //输出sample_rates
 // 
 //  const AVFilterLink *outlink;
 //  AVRational time_base = fmt_ctx->streams[audio_stream_index]->time_base;
@@ -253,12 +270,6 @@
 //  snprintf(
 //      args, sizeof(args),
 //      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%" PRIx64,
-//      time_base.num, time_base.den, dec_ctx->sample_rate,
-//      av_get_sample_fmt_name(dec_ctx->sample_fmt), dec_ctx->channel_layout);
-//
-//  printf(
-//      args, sizeof(args),
-//      "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%\n" PRIx64,
 //      time_base.num, time_base.den, dec_ctx->sample_rate,
 //      av_get_sample_fmt_name(dec_ctx->sample_fmt), dec_ctx->channel_layout);
 //
@@ -314,6 +325,16 @@
 //  outputs->pad_idx = 0;
 //  outputs->next = NULL;
 //
+//  //outputs1->name = av_strdup("in0");
+//  //outputs1->filter_ctx = buffersrc_ctx1;
+//  //outputs1->pad_idx = 0;
+//  //outputs1->next = outputs2;
+//
+//  //outputs2->name = av_strdup("in1");
+//  //outputs2->filter_ctx = buffersrc_ctx2;
+//  //outputs2->pad_idx = 0;
+//  //outputs2->next = NULL;
+//
 //  /*
 //   * The buffer sink input must be connected to the output pad of
 //   * the last filter described by filters_descr; since the last
@@ -356,7 +377,7 @@
 //  const uint16_t *p = (uint16_t *)frame->data[0];
 //  const uint16_t *p_end = p + n;
 //
-//  
+//  FILE *file = NULL;
 //  //while (p < p_end) {
 //  //  fputc(*p & 0xff, stdout);
 //  //  fputc(*p >> 8 & 0xff, stdout);
@@ -364,23 +385,25 @@
 //  //}
 //  //fflush(stdout);
 // 
-//  //if (NULL == file) {
-//  //  perror("fopen tmp.mp3 error\n");
-//  //  return;
-//  //} else {
-//  //  perror("fopen tmp.aac successful\n");
-//  //}
-//  //fwrite(frame->data[0], n , 1, file);
+// file = fopen("tmp.pcm", "ab+");
+//  if (NULL == file) {
+//    //perror("fopen tmp.mp3 error\n");
+//    return;
+//  } else {
+//    //perror("fopen tmp.aac successful\n");
+//  }
+//  fwrite(frame->data[0], n * 2, 1, file);
+//  fclose(file);
 //
 // 
 //
-//  if (!wav) {
-//    wav = wav_write_open(output.c_str(), dec_ctx->sample_rate,
-//                         16,
-//                         dec_ctx->channels);
-//  }
+//  //if (!wav) {
+//  //  wav = wav_write_open(output.c_str(), dec_ctx->sample_rate,
+//  //                       16,
+//  //                       dec_ctx->channels);
+//  //}
 //
-//  wav_write_data(wav, (unsigned char *)&frame->data[0], n * 2);
+//  //wav_write_data(wav, (unsigned char *)&frame->data[0], n * 2);
 //  
 //}
 //
@@ -511,11 +534,12 @@
 //}
 //
 //#undef main
-//int mainq(int argc, char **argv) {
+//int main(int argc, char **argv) {
 //  int ret;
 //  AVPacket packet;
 //  AVFrame *frame = av_frame_alloc();
 //  AVFrame *filt_frame = av_frame_alloc();
+//  packet.data = NULL;
 //
 //  if (!frame || !filt_frame) {
 //    perror("Could not allocate frame");
@@ -527,37 +551,38 @@
 //  //}
 //
 //  std::string file_name =
-//      "D:/Download/Videos/LadyLiu/Trip.flv";  
+//    //  "D:/Download/Videos/LadyLiu/Trip.flv";  
 //  //"D:/Study/Scala/VSWS/transcode/out/build/x64-Release/trip.mp3";
-//  //"D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
+//  "D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
 //
 //
 //  if ((ret = open_input_file(file_name.c_str())) < 0) return -1;  // goto end;
 //  if ((ret = init_filters(filter_desc)) < 0) return -1;          // goto end;
 //
 //    // sdl play audio
-//  FFmpegUtil::ffmpeg_util ffmpeg_ctx(file_name);
-//  SDL_setenv("SDL_AUDIO_ALSA_SET_BUFFER_SIZE", "1", 1);
+//  //FFmpegUtil::ffmpeg_util ffmpeg_ctx(file_name);
+//  //SDL_setenv("SDL_AUDIO_ALSA_SET_BUFFER_SIZE", "1", 1);
 //
-//  if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER)) {
-//    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to init SDL - %s\n !",
-//                 SDL_GetError);
-//    return -1;
-//  }
+//  //if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER)) {
+//  //  SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to init SDL - %s\n !",
+//  //               SDL_GetError);
+//  //  return -1;
+//  //}
 //
-//  SDL_AudioDeviceID audioDeviceID;
-//  std::thread audio_thread(playAudio, ffmpeg_ctx, std::ref(audioDeviceID));
-//  audio_thread.join();
-//  std::this_thread::sleep_for(std::chrono::milliseconds(20000));
-//  return 0;
+//  //SDL_AudioDeviceID audioDeviceID;
+//  //std::thread audio_thread(playAudio, ffmpeg_ctx, std::ref(audioDeviceID));
+//  //audio_thread.join();
+//  //std::this_thread::sleep_for(std::chrono::milliseconds(20000));
+//  //return 0;
 //
 //  /* read all packets */
-//  initSwr(audio_stream_index);
+//  //initSwr(audio_stream_index);
 //  while (1) {
 //    if ((ret = av_read_frame(fmt_ctx, &packet)) < 0) break;
 //
 //    if (packet.stream_index == audio_stream_index) {
 //      ret = avcodec_send_packet(dec_ctx, &packet);
+//      std::cout << "pkt size: " << packet.size;
 //      if (ret < 0) {
 //        av_log(NULL, AV_LOG_ERROR,
 //               "Error while sending a packet to the decoder\n");
@@ -577,11 +602,9 @@
 //        if (ret >= 0) {
 //          AVFrame *frame_out = av_frame_alloc();
 //
-//         // print_frame(frame);
-//          
 //          /* push the audio data from decoded frame into the filtergraph */
 //          if (av_buffersrc_add_frame_flags(buffersrc_ctx, frame,
-//                                           AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
+//                                           0) < 0) {
 //            av_log(NULL, AV_LOG_ERROR,
 //                   "Error while feeding the audio filtergraph\n");
 //            break;
@@ -592,12 +615,12 @@
 //            ret = av_buffersink_get_frame(buffersink_ctx, filt_frame);
 //            if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
 //            if (ret < 0) goto end;
-//            std::cout << "out_frame nb_sample: " << frame_out->data
-//                      << std::endl;
-//            if (0 != TransSample(filt_frame, frame_out, audio_stream_index)) {
-//              av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
-//            }
-//            print_frame(frame_out);
+//            //std::cout << "out_frame nb_sample: " << frame_out->data
+//            //          << std::endl;
+//            //if (0 != TransSample(filt_frame, frame_out, audio_stream_index)) {
+//            //  av_log(NULL, AV_LOG_ERROR, "convert audio failed\n");
+//            //}
+//            print_frame(filt_frame);
 //            av_frame_unref(filt_frame);
 //          }
 //          av_frame_unref(frame);
@@ -618,10 +641,10 @@
 //    fprintf(stderr, "Error occurred: %d\n",ret);
 //    exit(1);
 //  }
-//  if (wav) {
-//    wav_write_close(wav);
-//  }
+//  //if (wav) {
+//  //  wav_write_close(wav);
+//  //}
 //
-//  fclose(file);
+//
 //  exit(0);
 //}
