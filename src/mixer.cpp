@@ -36,12 +36,17 @@ Mixer::~Mixer() {
    //if (frame) av_frame_free(&frame);
    //if (_frame) av_frame_free(&_frame);
 
+   for (auto it : filter.src_filter_map) {
+      avfilter_free(it.second->buffersrc_ctx);
+    }
    //if (!ofmt_ctx) av_write_trailer(ofmt_ctx);
    avfilter_graph_free(&filter.filter_graph);
    //avcodec_free_context(&filter.dec_ctx);
    //avformat_close_input(&filter.fmt_ctx);
    //avcodec_free_context(&filter._dec_ctx);
    //avformat_close_input(&filter._fmt_ctx);
+
+
 
    if (ofmt_ctx != nullptr) {
      if (!(ofmt_ctx->oformat->flags & AVFMT_NOFILE))
