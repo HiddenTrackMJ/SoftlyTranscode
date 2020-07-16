@@ -48,6 +48,9 @@ find_library(SWSCALE_LIBRARY swscale)
 
 set(SDL_INCLUDE_DIR "D:/Study/Scala/VSWS/ffmpeg/SDL2-2.0.12/include")
 set(SDL_LIBRARY "D:/Study/Scala/VSWS/ffmpeg/SDL2-2.0.12/lib/x64/SDL2.lib")
+message(STATUS "SDL library status:")
+message(STATUS "    libraries: ${SDL_LIBRARY}")
+message(STATUS "    include path: ${SDL_INCLUDE_DIR}")
 
 
 #=======================libfdk-aac=========================

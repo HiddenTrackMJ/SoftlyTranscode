@@ -34,11 +34,11 @@ Mixer::~Mixer() {
    //av_write_trailer(ofmt_ctx);
    //if (&packet) av_free_packet(&packet);
    //if (frame) av_frame_free(&frame);
-   //if (_frame) av_frame_free(&_frame);
+   //if (silence_frame) av_frame_free(&silence_frame);
 
-   for (auto it : filter.src_filter_map) {
-      avfilter_free(it.second->buffersrc_ctx);
-    }
+   //for (auto it : filter.src_filter_map) {
+   //   avfilter_free(it.second->buffersrc_ctx);
+   // }
    //if (!ofmt_ctx) av_write_trailer(ofmt_ctx);
    avfilter_graph_free(&filter.filter_graph);
    //avcodec_free_context(&filter.dec_ctx);
@@ -65,6 +65,43 @@ std::string Mixer::gen_filter_desc(int n) {
 
   prefix = prefix + "amix=inputs=" + std::to_string(n) + "[out]";
   return prefix;
+}
+
+int Mixer::gen_silence_frame(AVFrame **in_frame) {
+  int ret;
+  silence_frame = av_frame_alloc();
+  if (!silence_frame) {
+    return NULL;
+  }
+
+  silence_frame->sample_rate = DEFAULT_SR;
+  silence_frame->format = DEFAULT_SF;
+  silence_frame->channel_layout = av_get_default_channel_layout(DEFAULT_CHANNEL);
+  silence_frame->channels = DEFAULT_CHANNEL;
+  silence_frame->nb_samples = SILENCE_BUFF;  //默认一帧数据大小为1024，可通过输入流里的一帧
+                                     //frame.nb_samples查看
+
+
+  ret = av_frame_get_buffer(silence_frame, 0);
+  //I_LOG("sr: {}. sf: {}, cl: {}, c: {}, nb: {}", silence_frame->sample_rate,
+  //      silence_frame->format, silence_frame->channel_layout, silence_frame->channels,
+  //      silence_frame->nb_samples);
+  if (ret < 0) {
+    av_frame_unref(silence_frame);
+    E_LOG("Failed to create silence frame!");
+    *in_frame = NULL;
+    return -1;
+  }
+  av_samples_set_silence(silence_frame->data, 0, silence_frame->nb_samples, silence_frame->channels,
+                         (enum AVSampleFormat)silence_frame->format);
+
+    //I_LOG("sr: {}. sf: {}, cl: {}, c: {}, nb: {}", silence_frame->sample_rate,
+    //    silence_frame->format, silence_frame->channel_layout, silence_frame->channels,
+    //    silence_frame->nb_samples);
+
+  *in_frame = silence_frame;
+
+  return 0;
 }
 
 int Mixer::open_output_file(const char *filename) {
@@ -146,7 +183,7 @@ int Mixer::encode_write_frame(AVFrame *filt_frame, unsigned int stream_index) {
   static int a_total_duration = 0;
   static int v_total_duration = 0;
   int ret;
-  I_LOG("Write frame {}", filt_frame->pts);
+  //I_LOG("Write frame {}", filt_frame->pts);
   ret = avcodec_send_frame(enc_ctx, filt_frame);
   if (ret < 0) {
     E_LOG("Error while sending a frame to the encoder: {}", ret);
@@ -192,7 +229,8 @@ int Mixer::encode_write_frame(AVFrame *filt_frame, unsigned int stream_index) {
         pkt.duration, ofmt_ctx->streams[stream_index]->codec->time_base,
         ofmt_ctx->streams[stream_index]->time_base,
         (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-
+    
+    I_LOG("Write pkt {}", pkt.size);
     ret = av_interleaved_write_frame(ofmt_ctx, &pkt);
     ++pkt_count;
     av_packet_unref(&pkt);
@@ -814,6 +852,7 @@ int Mixer::process_thread(std::string dst_file) {
       frame = ff_decoder.getFrame();
       ff_decoder.reset();
       
+      //gen_silence_frame(&frame);
       //frame->nb_samples = filter.fmt_ctx->streams[stream_index]->codec->frame_size;
       //frame->channel_layout = in_codec_info.->channel_layout;
       //frame->format = in_codec_info.sample_fmt;
@@ -849,21 +888,30 @@ int Mixer::process_thread(std::string dst_file) {
       int size = pkt_list_ctx2.pkt_list.front().second;
       pkt_list_ctx2.pkt_list.pop_front();
 
-      ff_decoder1.InputData((unsigned char *)&pkt[0], size);
+      if (count > 100) {
+        ff_decoder1.InputData((unsigned char *)&pkt[0], size);
 
-      frame = ff_decoder1.getFrame();
-      ff_decoder1.reset();
+        frame = ff_decoder1.getFrame();
+        ff_decoder1.reset();
+      }
+      
 
+      else gen_silence_frame(&frame);
+      //I_LOG("111sr: {}. sf: {}, cl: {}, c: {}, nb: {}", frame->sample_rate,
+      //      frame->format, frame->channel_layout, frame->channels,
+      //      frame->nb_samples);
       //frame->nb_samples = filter._fmt_ctx->streams[stream_index]->codec->frame_size;
       //frame->channel_layout = in_codec_info.channel_layout;
       //frame->format = in_codec_info.sample_fmt;
       //frame->sample_rate = in_codec_info.sample_rate;
       frame->pts = av_frame_get_best_effort_timestamp(frame);
-      
+
     } else {
       frame = NULL;
     }
-
+    //I_LOG("222sr: {}. sf: {}, cl: {}, c: {}, nb: {}", frame->sample_rate,
+    //      frame->format, frame->channel_layout, frame->channels,
+    //      frame->nb_samples);
     /* push the audio data from decoded frame into the filtergraph */
     if (av_buffersrc_add_frame_flags(_iter->second->buffersrc_ctx, frame, 0) <
         0) {
@@ -908,7 +956,7 @@ int Mixer::open_thread(int port, std::string dst) {
       //"D:/Study/Scala/VSWS/transcode/out/build/x64-Release/trip.aac";
   std::string filename2 =
       //"D:/Study/Scala/VSWS/retream/out/build/x64-Release/recv.aac";
-      "D:/Study/Scala/VSWS/transcode/out/build/1.aac";
+      "D:/Study/Scala/VSWS/transcode/out/build/2.aac";
       //"D:/Study/Scala/VSWS/transcode/out/build/x64-Release/trip.aac";
   try {
 

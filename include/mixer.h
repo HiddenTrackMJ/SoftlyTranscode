@@ -33,6 +33,10 @@ extern "C" {
 #include "adts_header.hpp"
 #include "seeker/loggerApi.h"
 
+#define SILENCE_BUFF 1024
+#define DEFAULT_CHANNEL 2                                    //默认channel
+#define DEFAULT_SR 48000                                     //默认sample_rate
+#define DEFAULT_SF (enum AVSampleFormat) AV_SAMPLE_FMT_FLTP  //默认sample_format
 #define BUF_SIZE_20K 2048000
 #define BUF_SIZE_1K 1024000
 
@@ -145,6 +149,8 @@ class Mixer {
 
   AVFrame *frame;
 
+  AVFrame *silence_frame;
+
   bool stop;
 
   int pkt_count = 0;
@@ -159,6 +165,8 @@ class Mixer {
   ~Mixer();
 
   static std::string gen_filter_desc(int n);
+
+  int gen_silence_frame(AVFrame **frame);
 
   int open_output_file(const char *filename);
 
